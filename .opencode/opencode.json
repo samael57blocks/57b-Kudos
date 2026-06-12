@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "gentle-orchestrator": {
+      "description": "Gentle AI SDD Orchestrator for nft-57b",
+      "mode": "primary",
+      "model": "opencode/big-pickle"
+    },
+    "sdd-init": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "sdd-explore": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "sdd-propose": {
+      "model": "opencode/big-pickle"
+    },
+    "sdd-tasks": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "sdd-verify": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "sdd-archive": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "sdd-spec": {
+      "model": "opencode/big-pickle"
+    },
+    "sdd-design": {
+      "model": "opencode/big-pickle"
+    },
+    "sdd-apply": {
+      "model": "opencode/big-pickle"
+    }
+  }
+}
