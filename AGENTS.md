@@ -21,6 +21,18 @@ You write clean, secure, gas-optimized, and strictly typed code following modern
 
 ---
 
+## Package Manager Policy
+
+### 📦 pnpm Only — No npm or Yarn
+All package management across the entire monorepo MUST use **pnpm exclusively**:
+1. **Never** use `npm install`, `npm ci`, `yarn add`, or `yarn install`.
+2. Always use `pnpm add`, `pnpm install`, `pnpm dlx`, etc.
+3. The root `.gitignore` and per-package `.gitignore` must include `package-lock.json` and `yarn.lock` to prevent accidental lockfile contamination.
+4. If a tool's default init command uses npm (e.g. `npx hardhat init`), intercept it: use `pnpm dlx` or set up the project manually with `pnpm add`.
+5. All `package.json` files across `hardhat/`, `web-app/`, and `backend/` are managed with pnpm.
+
+---
+
 ## Operational Guardrails & Environment Security
 
 ### ⚠️ Strict `.env` Management Rule

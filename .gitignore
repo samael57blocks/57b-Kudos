@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Lockfiles from other managers (we use pnpm only)
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+build/
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Hardhat artifacts (generated in hardhat/)
+# hardhat/artifacts/ and hardhat/cache/ managed within hardhat/.gitignore
+
+# TypeChain
+typechain-types/
+
+# Coverage
+coverage/
+coverage.json

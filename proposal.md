@@ -47,24 +47,31 @@ The platform bridges two distinct user roles — **Company** (issuer) and **Empl
 
 ## Approach
 
-### Smart Contract Layer
+### Smart Contract Layer (`hardhat/`)
 - Solidity v0.8.x, ERC-721 with `ERC721URIStorage` + `ERC721Enumerable` extensions
 - OpenZeppelin's `AccessControl` for role management (DEFAULT_ADMIN_ROLE, MINTER_ROLE)
 - Company registration via factory pattern or registry contract
 - Metadata frozen at mint time — immutable achievement record
+- Hardhat Ignition for declarative deployments
 
-### Frontend Layer
+### Frontend Layer (`web-app/`)
 - React + Vite + TypeScript with strict mode
 - `wagmi` v2+ for wallet connection and contract interactions
 - `viem` for low-level RPC and type-safe ABI encoding
 - `@tanstack/react-query` for blockchain state caching and optimistic updates
 - Conditional rendering based on connected wallet role (company vs employee)
 
+### Backend Layer (`backend/`)
+- Off-chain API for company registration and KYC-light workflows
+- Node.js + TypeScript with Express or Hono
+- Relational database for company metadata and approval states
+
 ### Infrastructure
-- Hardhat (development, testing, deployment) or Foundry for faster compilation
+- Hardhat (development, testing, deployment via Ignition)
 - IPFS via Pinata/Filebase for metadata and asset storage
 - Sepolia testnet for development, Ethereum mainnet for production
 - Environment-based contract address and network configuration
+- Monorepo-style layout: `hardhat/`, `web-app/`, `backend/`
 
 ---
 
@@ -72,16 +79,18 @@ The platform bridges two distinct user roles — **Company** (issuer) and **Empl
 
 | Area | Impact | Description |
 |------|--------|-------------|
-| `contracts/NFT57B.sol` | New | Main ERC-721 contract with role-based access |
-| `contracts/CompanyRegistry.sol` | New | Company identity and registration contract |
-| `contracts/libraries/MetadataBuilder.sol` | New | Metadata URI construction helper |
-| `test/` | New | Unit and integration tests for all contracts |
-| `scripts/deploy.ts` | New | Deployment script with network configuration |
-| `src/` | New | React frontend with role-based routing |
-| `src/components/company/` | New | Company dashboard components |
-| `src/components/employee/` | New | Employee portfolio components |
-| `src/hooks/` | New | wagmi + react-query hooks for contract interaction |
-| `src/utils/metadata.ts` | New | IPFS upload and metadata formatting utilities |
+| `hardhat/contracts/NFT57B.sol` | New | Main ERC-721 contract with role-based access |
+| `hardhat/contracts/CompanyRegistry.sol` | New | Company identity and registration contract |
+| `hardhat/contracts/libraries/MetadataBuilder.sol` | New | Metadata URI construction helper |
+| `hardhat/test/` | New | Unit and integration tests for all contracts |
+| `hardhat/scripts/` | New | Hardhat task scripts for operations and seed data |
+| `hardhat/ignition/modules/` | New | Hardhat Ignition deployment modules |
+| `web-app/src/` | New | React frontend with role-based routing |
+| `web-app/src/components/company/` | New | Company dashboard components |
+| `web-app/src/components/employee/` | New | Employee portfolio components |
+| `web-app/src/hooks/` | New | wagmi + react-query hooks for contract interaction |
+| `web-app/src/utils/metadata.ts` | New | IPFS upload and metadata formatting utilities |
+| `backend/` | New | Off-chain API for company registration and KYC-light |
 
 ---
 
@@ -109,10 +118,12 @@ The platform bridges two distinct user roles — **Company** (issuer) and **Empl
 ## Dependencies
 
 - OpenZeppelin Contracts v5.x (AccessControl, ERC-721, Pausable)
+- Hardhat Ignition for declarative deployments
 - IPFS pinning service (Pinata or Filebase) with paid subscription
 - Infura/Alchemy RPC endpoint for Sepolia and mainnet
 - Etherscan API key for contract verification
 - WalletConnect Project ID (if supporting WalletConnect)
+- pnpm (exclusive package manager — no npm or yarn)
 
 ---
 
