@@ -1,0 +1,18 @@
+{
+  "name": "nft-57b-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "clean": "pnpm -r clean",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["keccak", "secp256k1"]
+  },
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=9"
+  }
+}
