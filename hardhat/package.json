@@ -23,8 +23,5 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.2.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": ["keccak", "secp256k1"]
   }
 }
