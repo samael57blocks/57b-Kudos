@@ -37,17 +37,36 @@ contract CompanyRegistry is AccessControl {
     /// @notice Emitted when a company is rejected
     event CompanyRejected(uint256 indexed companyId);
 
+    /// @notice Emitted when an employee registers to a company
+    event EmployeeRegistered(uint256 indexed companyId, address indexed employee);
+
+    /// @notice Emitted when an employee is removed from a company
+    event EmployeeRemoved(uint256 indexed companyId, address indexed employee);
+
     /// @notice Revert when attempting to approve/reject a company that is not Pending
     error CompanyNotPending(uint256 companyId, CompanyStatus currentStatus);
 
     /// @notice Revert when attempting to add a minter for a company that is not Approved
     error CompanyNotApproved(uint256 companyId, CompanyStatus currentStatus);
 
+    /// @notice Revert when an employee is already registered to a company
+    error EmployeeAlreadyRegistered(address employee, uint256 companyId);
+
+    /// @notice Revert when trying to remove an unregistered employee
+    error EmployeeNotRegistered(address employee);
+
+    /// @notice Revert when caller is not the company admin nor the DEFAULT_ADMIN
+    error OnlyCompanyAdminOrAdmin(address caller, uint256 companyId);
+
     INFT57B public immutable nft57b;
 
     uint256 private _nextCompanyId;
 
     mapping(uint256 => Company) private _companies;
+
+    /// @notice employee address → companyId + 1 (0 means unregistered)
+    /// @dev Uses +1 offset to distinguish company ID 0 from "not registered"
+    mapping(address => uint256) private _employeeCompanies;
 
     /// @notice Initializes the CompanyRegistry
     /// @param nft57bAddress The NFT57B contract address
@@ -129,6 +148,50 @@ contract CompanyRegistry is AccessControl {
     /// @dev Only DEFAULT_ADMIN_ROLE. This contract MUST have MINTER_ADMIN_ROLE on NFT57B.
     function removeMinter(address minterWallet) external onlyRole(DEFAULT_ADMIN_ROLE) {
         nft57b.revokeRole(nft57b.MINTER_ROLE(), minterWallet);
+    }
+
+    /// @notice Register msg.sender as an employee of an approved company
+    /// @param companyId The company to join (must be Approved)
+    /// @dev Public — any wallet can register. One wallet → one company.
+    function registerEmployee(uint256 companyId) external {
+        Company storage company = _companies[companyId];
+        if (company.status != CompanyStatus.Approved) {
+            revert CompanyNotApproved(companyId, company.status);
+        }
+
+        if (_employeeCompanies[msg.sender] != 0) {
+            revert EmployeeAlreadyRegistered(msg.sender, _employeeCompanies[msg.sender] - 1);
+        }
+
+        _employeeCompanies[msg.sender] = companyId + 1;
+        emit EmployeeRegistered(companyId, msg.sender);
+    }
+
+    /// @notice Remove an employee from their company
+    /// @param employee The employee address to remove
+    /// @dev Only DEFAULT_ADMIN_ROLE or the company admin. Reverts if not registered.
+    function removeEmployee(address employee) external {
+        uint256 stored = _employeeCompanies[employee];
+        if (stored == 0) {
+            revert EmployeeNotRegistered(employee);
+        }
+
+        uint256 companyId = stored - 1;
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && _companies[companyId].admin != msg.sender) {
+            revert OnlyCompanyAdminOrAdmin(msg.sender, companyId);
+        }
+
+        delete _employeeCompanies[employee];
+        emit EmployeeRemoved(companyId, employee);
+    }
+
+    /// @notice Get the company ID that an employee belongs to
+    /// @param employee The employee address
+    /// @return companyId The company ID, or 0 if not registered
+    function getEmployeeCompany(address employee) external view returns (uint256 companyId) {
+        uint256 stored = _employeeCompanies[employee];
+        if (stored == 0) return 0;
+        return stored - 1;
     }
 
     /// @notice Get company info by ID
