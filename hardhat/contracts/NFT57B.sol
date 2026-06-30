@@ -35,9 +35,9 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
     /// @notice Initializes the NFT57B contract
     /// @param defaultAdmin Address that receives DEFAULT_ADMIN_ROLE and MINTER_ADMIN_ROLE
     constructor(address defaultAdmin) ERC721("57Blocks Kudos", "57B") {
-        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-        _grantRole(MINTER_ADMIN_ROLE, defaultAdmin);
-        _setRoleAdmin(MINTER_ROLE, MINTER_ADMIN_ROLE);
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin); // grants DEFAULT_ADMIN_ROLE (super admin) to defaultAdmin
+        _grantRole(MINTER_ADMIN_ROLE, defaultAdmin);  // also grants MINTER_ADMIN_ROLE (minters admin) to defaultAdmin
+        _setRoleAdmin(MINTER_ROLE, MINTER_ADMIN_ROLE); // MINTER_ADMIN_ROLE controls MINTER_ROLE
     }
 
     /// @notice Mint a new NFT to `to` with the given URI
