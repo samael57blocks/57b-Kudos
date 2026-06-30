@@ -2,13 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-
-/// @notice Minimal interface for NFT57B cross-contract role management
-interface INFT57B {
-    function grantRole(bytes32 role, address account) external;
-    function revokeRole(bytes32 role, address account) external;
-    function MINTER_ROLE() external view returns (bytes32);
-}
+import "./INFT57B.sol";
 
 /// @title CompanyRegistry — 57Blocks Kudos Company Registration
 /// @notice Manages company lifecycle (Pending → Approved → Rejected) and minter assignments
