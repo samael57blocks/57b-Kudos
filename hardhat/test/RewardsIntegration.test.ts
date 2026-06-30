@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import hre from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { getAddress, decodeErrorResult } from "viem";
+import { getAddress, decodeErrorResult, decodeEventLog } from "viem";
 
 /**
  * Helper: assert a transaction reverts with a specific custom error name.
@@ -117,8 +117,11 @@ describe("RewardsIntegration", function () {
       account: owner.account,
     });
 
-    // Add MINTER_ROLE on NFT57B for the companyAdmin (via CompanyRegistry)
+    // Grant MINTER_ROLE on NFT57B to CompanyRegistry (for recognize()) AND companyAdmin (for direct safeMint)
     const NFT_MINTER_ROLE = await nft.read.MINTER_ROLE();
+    await nft.write.grantRole([NFT_MINTER_ROLE, registry.address], {
+      account: owner.account,
+    });
     await nft.write.grantRole([NFT_MINTER_ROLE, companyAdmin.account.address], {
       account: owner.account,
     });
@@ -166,16 +169,43 @@ describe("RewardsIntegration", function () {
         account: employee.account,
       });
 
-      // ── Step 4: Recognize (companyAdmin mints NFT to employee) ──
-      await nft.write.safeMint([employee.account.address, uri], {
-        account: companyAdmin.account,
-      });
+      // ── Step 4: Recognize (companyAdmin calls registry.recognize()) ──
+      const recognizeHash = await registry.write.recognize(
+        [employee.account.address, uri],
+        { account: companyAdmin.account }
+      );
 
-      // Verify NFT was minted
+      // Verify NFT was minted via recognize
       expect(await nft.read.ownerOf([0n])).to.equal(
         getAddress(employee.account.address)
       );
       expect(await nft.read.tokenURI([0n])).to.equal(uri);
+
+      // Verify Recognized event params
+      const publicClient = await hre.viem.getPublicClient();
+      const recognizeReceipt = await publicClient.getTransactionReceipt({
+        hash: recognizeHash,
+      });
+      const recognizeLog = recognizeReceipt.logs
+        .map((log) => {
+          try {
+            return decodeEventLog({
+              abi: registry.abi,
+              data: log.data,
+              topics: log.topics,
+            });
+          } catch {
+            return null;
+          }
+        })
+        .find((e) => e && e.eventName === "Recognized") as {
+        eventName: "Recognized";
+        args: { tokenId: bigint; companyId: bigint; employee: `0x${string}` };
+      } | undefined;
+      expect(recognizeLog).to.not.be.undefined;
+      if (recognizeLog && recognizeLog.args) {
+        expect(recognizeLog.args.tokenId).to.equal(0n);
+      }
 
       // ── Step 5: Claim (employee claims token 0) ──
       await nft.write.claim([0n], { account: employee.account });
@@ -438,6 +468,99 @@ describe("RewardsIntegration", function () {
     });
   });
 
+  describe("R7: recognize — edge cases", function () {
+    it("R7-Error: should revert with OnlyCompanyAdmin when non-admin calls recognize", async function () {
+      const { registry, owner, companyAdmin, employee, other } =
+        await loadFixture(integrationFixture);
+
+      const uri = "ipfs://test";
+
+      // Setup company and employee
+      await registry.write.registerCompany(
+        ["57Blocks", companyAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.approveCompany([0n], { account: owner.account });
+      await registry.write.registerEmployee([0n], {
+        account: employee.account,
+      });
+
+      // other (not companyAdmin) tries to recognize
+      await expectRevertWithError(
+        () =>
+          registry.write.recognize([employee.account.address, uri], {
+            account: other.account,
+          }),
+        registry.abi,
+        "OnlyCompanyAdmin"
+      );
+    });
+
+    it("R7-Error: should revert with OnlyCompanyAdmin when admin from wrong company calls recognize", async function () {
+      const { registry, owner, companyAdmin, employee } =
+        await loadFixture(integrationFixture);
+
+      const uri = "ipfs://test";
+      const [owner2] = await hre.viem.getWalletClients();
+      const [otherAdmin] = await hre.viem.getWalletClients();
+
+      // Setup company 0 and employee
+      await registry.write.registerCompany(
+        ["57Blocks", companyAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.approveCompany([0n], { account: owner.account });
+      await registry.write.registerEmployee([0n], {
+        account: employee.account,
+      });
+
+      // Register another company with a different admin
+      await registry.write.registerCompany(
+        ["OtherCorp", otherAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.approveCompany([1n], { account: owner.account });
+
+      // otherAdmin (admin of company 1, not company 0) tries to recognize employee of company 0
+      await expectRevertWithError(
+        () =>
+          registry.write.recognize([employee.account.address, uri], {
+            account: otherAdmin.account,
+          }),
+        registry.abi,
+        "OnlyCompanyAdmin"
+      );
+    });
+
+    it("R7-Error: should revert with EmployeeNotInApprovedCompany when employee not registered", async function () {
+      const { registry, owner, companyAdmin, other } =
+        await loadFixture(integrationFixture);
+
+      const uri = "ipfs://test";
+
+      // Setup company
+      await registry.write.registerCompany(
+        ["57Blocks", companyAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.approveCompany([0n], { account: owner.account });
+
+      // Try to recognize an unregistered employee
+      await expectRevertWithError(
+        () =>
+          registry.write.recognize([other.account.address, uri], {
+            account: companyAdmin.account,
+          }),
+        registry.abi,
+        "EmployeeNotInApprovedCompany"
+      );
+    });
+
+    // Note: CompanyNotApproved in recognize() is defense-in-depth.
+    // The path is unreachable because registerEmployee already blocks
+    // non-approved companies. Tested at the registerEmployee level (R3).
+  });
+
   describe("R6: Events on new functions", function () {
     it("R6-Happy: claim should emit ClaimInitiated with correct params", async function () {
       const { nft, registry, owner, companyAdmin, employee } =
@@ -455,20 +578,123 @@ describe("RewardsIntegration", function () {
         account: companyAdmin.account,
       });
 
-      // Claim and check event
-      const tx = await nft.write.claim([0n], { account: employee.account });
-      expect(tx).to.not.be.undefined;
+      // Claim and decode event
+      const hash = await nft.write.claim([0n], { account: employee.account });
+      const publicClient = await hre.viem.getPublicClient();
+      const receipt = await publicClient.getTransactionReceipt({ hash });
+
+      // Find the ClaimInitiated event in the logs
+      const claimLog = receipt.logs
+        .map((log) => {
+          try {
+            return decodeEventLog({
+              abi: nft.abi,
+              data: log.data,
+              topics: log.topics,
+            });
+          } catch {
+            return null;
+          }
+        })
+        .find((e) => e && e.eventName === "ClaimInitiated") as {
+        eventName: "ClaimInitiated";
+        args: { tokenId: bigint; employee: `0x${string}` };
+      } | undefined;
+
+      expect(claimLog).to.not.be.undefined;
+      if (claimLog) {
+        expect(claimLog.eventName).to.equal("ClaimInitiated");
+        expect(claimLog.args.tokenId).to.equal(0n);
+        expect(claimLog.args.employee.toLowerCase()).to.equal(
+          employee.account.address.toLowerCase()
+        );
+      }
     });
 
     it("R6-Happy: setCompanyRegistry should emit CompanyRegistryUpdated", async function () {
       const { nft, owner } = await loadFixture(integrationFixture);
 
       const newRegistry = "0x0000000000000000000000000000000000000001";
-      await nft.write.setCompanyRegistry([newRegistry], {
+      const hash = await nft.write.setCompanyRegistry([newRegistry], {
         account: owner.account,
       });
+
+      // Decode event params
+      const publicClient = await hre.viem.getPublicClient();
+      const receipt = await publicClient.getTransactionReceipt({ hash });
+
+      const updatedLog = receipt.logs
+        .map((log) => {
+          try {
+            return decodeEventLog({
+              abi: nft.abi,
+              data: log.data,
+              topics: log.topics,
+            });
+          } catch {
+            return null;
+          }
+        })
+        .find((e) => e && e.eventName === "CompanyRegistryUpdated") as {
+        eventName: "CompanyRegistryUpdated";
+        args: { registry: `0x${string}` };
+      } | undefined;
+      expect(updatedLog).to.not.be.undefined;
+      if (updatedLog && updatedLog.args) {
+        expect(updatedLog.args.registry.toLowerCase()).to.equal(
+          newRegistry.toLowerCase()
+        );
+      }
+
       const stored = await nft.read.companyRegistry();
       expect(stored.toLowerCase()).to.equal(newRegistry.toLowerCase());
+    });
+
+    it("R6-Happy: recognize should emit Recognized with correct params", async function () {
+      const { nft, registry, owner, companyAdmin, employee } =
+        await loadFixture(integrationFixture);
+
+      const uri = "ipfs://kudos-metadata";
+
+      // Setup company and employee
+      await registry.write.registerCompany(
+        ["57Blocks", companyAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.approveCompany([0n], { account: owner.account });
+      await registry.write.registerEmployee([0n], {
+        account: employee.account,
+      });
+
+      // recognize via registry
+      const hash = await registry.write.recognize(
+        [employee.account.address, uri],
+        { account: companyAdmin.account }
+      );
+
+      const publicClient = await hre.viem.getPublicClient();
+      const receipt = await publicClient.getTransactionReceipt({ hash });
+
+      const recogLog = receipt.logs
+        .map((log) => {
+          try {
+            return decodeEventLog({
+              abi: registry.abi,
+              data: log.data,
+              topics: log.topics,
+            });
+          } catch {
+            return null;
+          }
+        })
+        .find((e) => e && e.eventName === "Recognized") as {
+        eventName: "Recognized";
+        args: { tokenId: bigint; companyId: bigint; employee: `0x${string}` };
+      } | undefined;
+      expect(recogLog).to.not.be.undefined;
+      if (recogLog && recogLog.args) {
+        expect(recogLog.args.tokenId).to.equal(0n);
+      }
     });
   });
 });
