@@ -5,9 +5,16 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "./ICompanyRegistry.sol";
 
 /// @notice Emitted when a non-admin tries to transfer an NFT57B token between non-zero addresses
 error TransferNotAllowed(uint256 tokenId, address from, address to);
+
+/// @notice Emitted when a non-owner tries to claim a token
+error ClaimNotAllowed(uint256 tokenId, address caller);
+
+/// @notice Emitted when companyRegistry is not set before claim
+error CompanyRegistryNotSet();
 
 /// @title NFT57B — 57Blocks Kudos Non-Transferable NFT
 /// @notice Core ERC-721 token with non-transferable policy, role-based minting/burning, and pausable mint
@@ -20,6 +27,9 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
 
     uint256 private _nextTokenId;
 
+    /// @notice Address of the CompanyRegistry contract for reward orchestration
+    address public companyRegistry;
+
     /// @notice Emitted when a new NFT is minted
     /// @param tokenId The ID of the minted token
     /// @param to The recipient address
@@ -31,6 +41,15 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
     /// @param from The owner at time of burn
     /// @param caller The address that initiated the burn
     event NFTBurned(uint256 indexed tokenId, address indexed from, address indexed caller);
+
+    /// @notice Emitted when a claim is initiated (token burned, rewards pending)
+    /// @param tokenId The ID of the claimed token
+    /// @param employee The address that claimed the token
+    event ClaimInitiated(uint256 indexed tokenId, address indexed employee);
+
+    /// @notice Emitted when the CompanyRegistry address is updated
+    /// @param registry The new CompanyRegistry address
+    event CompanyRegistryUpdated(address indexed registry);
 
     /// @notice Initializes the NFT57B contract
     /// @param defaultAdmin Address that receives DEFAULT_ADMIN_ROLE and MINTER_ADMIN_ROLE
@@ -77,6 +96,41 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
     /// @dev Only callable by DEFAULT_ADMIN_ROLE
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
+    }
+
+    /// @notice Set the CompanyRegistry contract address for reward orchestration
+    /// @param registry_ The CompanyRegistry contract address
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE. Emits CompanyRegistryUpdated.
+    function setCompanyRegistry(address registry_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        companyRegistry = registry_;
+        emit CompanyRegistryUpdated(registry_);
+    }
+
+    /// @notice Claim a token by burning it and triggering reward distribution
+    /// @param tokenId The ID of the token to claim
+    /// @dev CEI pattern: burn first, then external callback.
+    ///      Only the token owner can claim. Contract must NOT be paused.
+    ///      CompanyRegistry must be set before calling.
+    function claim(uint256 tokenId) external whenNotPaused {
+        if (_ownerOf(tokenId) != _msgSender()) {
+            revert ClaimNotAllowed(tokenId, _msgSender());
+        }
+
+        address registry = companyRegistry;
+        if (registry == address(0)) {
+            revert CompanyRegistryNotSet();
+        }
+
+        // Capture URI BEFORE burn — OZ v5 _burn clears URI storage
+        string memory uri = tokenURI(tokenId);
+
+        // CEI: internal state change first (burn)
+        _burn(tokenId);
+
+        emit ClaimInitiated(tokenId, _msgSender());
+
+        // CEI: external callback after state change
+        ICompanyRegistry(registry).onClaimed(_msgSender(), tokenId, uri);
     }
 
     // ══════════════════════════════════════════════════════
