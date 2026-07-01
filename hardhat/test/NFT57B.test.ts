@@ -55,25 +55,44 @@ describe("NFT57B", function () {
     const [owner, minter, employee, recipient, other] =
       await hre.viem.getWalletClients();
 
+    // Deploy NFT57B (owner gets DEFAULT_ADMIN_ROLE)
     const nft = await hre.viem.deployContract("NFT57B", [
       owner.account.address,
     ]);
 
-    // Grant MINTER_ROLE to minter (owner holds MINTER_ADMIN_ROLE)
-    const MINTER_ROLE = await nft.read.MINTER_ROLE();
-    await nft.write.grantRole([MINTER_ROLE, minter.account.address], {
+    // Deploy CompanyRegistry (owner gets DEFAULT_ADMIN_ROLE)
+    const registry = await hre.viem.deployContract("CompanyRegistry", [
+      nft.address,
+      owner.account.address,
+    ]);
+
+    // Set CompanyRegistry on NFT57B so it can mint
+    await nft.write.setCompanyRegistry([registry.address], {
       account: owner.account,
     });
 
-    return { nft, owner, minter, employee, recipient, other, MINTER_ROLE };
+    // Register company so we can use recognize() for minting
+    await registry.write.registerCompany(
+      ["Test Corp", minter.account.address], // minter acts as company admin for tests
+      { account: owner.account }
+    );
+
+    // Register employee
+    await registry.write.registerEmployee([0n], {
+      account: employee.account,
+    });
+
+    return { nft, registry, owner, minter, employee, recipient, other };
   }
 
   describe("R1: safeMint", function () {
-    it("R1-Happy: should mint token with URI, set owner, and emit NFTMinted", async function () {
-      const { nft, minter, employee } = await loadFixture(deployFixture);
+    it("R1-Happy: should mint token via CompanyRegistry, set owner, and emit NFTMinted", async function () {
+      const { nft, registry, minter, employee } = await loadFixture(deployFixture);
 
       const uri = "ipfs://QmTest123";
-      await nft.write.safeMint([employee.account.address, uri], {
+
+      // Mint via registry.recognize() — this calls nft57b.safeMint() internally
+      await registry.write.recognize([employee.account.address, uri], {
         account: minter.account,
       });
 
@@ -90,7 +109,7 @@ describe("NFT57B", function () {
       expect(balance).to.equal(1n);
     });
 
-    it("R1-Error: should revert when caller does not have MINTER_ROLE", async function () {
+    it("R1-Error: should revert when caller is not CompanyRegistry", async function () {
       const { nft, other, employee } = await loadFixture(deployFixture);
 
       await expectRevertWithError(
@@ -99,19 +118,20 @@ describe("NFT57B", function () {
             account: other.account,
           }),
         nft.abi,
-        "AccessControlUnauthorizedAccount"
+        "OnlyCompanyRegistry"
       );
     });
 
     it("R1-Error: should revert when contract is paused", async function () {
-      const { nft, owner, minter, employee } = await loadFixture(deployFixture);
+      const { nft, registry, owner, minter, employee } = await loadFixture(deployFixture);
 
       // Pause by admin
       await nft.write.pause({ account: owner.account });
 
+      // recognize() calls safeMint which has whenNotPaused
       await expectRevertWithError(
         () =>
-          nft.write.safeMint([employee.account.address, "uri"], {
+          registry.write.recognize([employee.account.address, "uri"], {
             account: minter.account,
           }),
         nft.abi,
@@ -122,10 +142,10 @@ describe("NFT57B", function () {
 
   describe("R2: burn", function () {
     it("R2-Happy: should burn token, clear owner, and emit NFTBurned", async function () {
-      const { nft, owner, minter, employee } = await loadFixture(deployFixture);
+      const { nft, registry, owner, minter, employee } = await loadFixture(deployFixture);
 
       // First mint a token
-      await nft.write.safeMint([employee.account.address, "ipfs://test"], {
+      await registry.write.recognize([employee.account.address, "ipfs://test"], {
         account: minter.account,
       });
 
@@ -145,10 +165,10 @@ describe("NFT57B", function () {
     });
 
     it("R2-Error: should revert when caller does not have DEFAULT_ADMIN_ROLE", async function () {
-      const { nft, minter, employee, other } = await loadFixture(deployFixture);
+      const { nft, registry, minter, employee, other } = await loadFixture(deployFixture);
 
       // Mint a token first
-      await nft.write.safeMint([employee.account.address, "uri"], {
+      await registry.write.recognize([employee.account.address, "uri"], {
         account: minter.account,
       });
 
@@ -162,11 +182,11 @@ describe("NFT57B", function () {
 
   describe("R3: Non-transferable", function () {
     it("R3-Happy: admin can transfer token via transferFrom", async function () {
-      const { nft, owner, minter, employee, recipient } =
+      const { nft, registry, owner, minter, employee, recipient } =
         await loadFixture(deployFixture);
 
       // Mint token to employee
-      await nft.write.safeMint([employee.account.address, "uri"], {
+      await registry.write.recognize([employee.account.address, "uri"], {
         account: minter.account,
       });
 
@@ -194,11 +214,11 @@ describe("NFT57B", function () {
     });
 
     it("R3-Error: non-admin employee transfer reverts with TransferNotAllowed", async function () {
-      const { nft, minter, employee, recipient } =
+      const { nft, registry, minter, employee, recipient } =
         await loadFixture(deployFixture);
 
       // Mint token to employee
-      await nft.write.safeMint([employee.account.address, "uri"], {
+      await registry.write.recognize([employee.account.address, "uri"], {
         account: minter.account,
       });
 
@@ -217,10 +237,10 @@ describe("NFT57B", function () {
 
   describe("R4: Pausable", function () {
     it("R4-Happy: pause/unpause cycle blocks and resumes minting", async function () {
-      const { nft, owner, minter, employee } = await loadFixture(deployFixture);
+      const { nft, registry, owner, minter, employee } = await loadFixture(deployFixture);
 
       // Mint before pause works
-      await nft.write.safeMint([employee.account.address, "uri1"], {
+      await registry.write.recognize([employee.account.address, "uri1"], {
         account: minter.account,
       });
 
@@ -232,7 +252,7 @@ describe("NFT57B", function () {
       // Mint blocked when paused
       await expectRevertWithError(
         () =>
-          nft.write.safeMint([employee.account.address, "uri2"], {
+          registry.write.recognize([employee.account.address, "uri2"], {
             account: minter.account,
           }),
         nft.abi,
@@ -251,8 +271,9 @@ describe("NFT57B", function () {
       const isUnpaused = await nft.read.paused();
       expect(isUnpaused).to.be.false;
 
-      // Mint resumes after unpause (token counter = 1 after token 0 was burned)
-      await nft.write.safeMint([employee.account.address, "uri3"], {
+      // Mint resumes after unpause (need to re-register employee since balance is 0)
+      // Actually employee is still registered, just has no tokens. Mint again.
+      await registry.write.recognize([employee.account.address, "uri3"], {
         account: minter.account,
       });
       const ownerOf1 = await nft.read.ownerOf([1n]);
@@ -270,13 +291,13 @@ describe("NFT57B", function () {
     });
 
     it("R4-Happy: burn works when paused (admin recovery)", async function () {
-      const { nft, owner, minter, employee } = await loadFixture(deployFixture);
+      const { nft, registry, owner, minter, employee } = await loadFixture(deployFixture);
 
       // Mint two tokens
-      await nft.write.safeMint([employee.account.address, "uri1"], {
+      await registry.write.recognize([employee.account.address, "uri1"], {
         account: minter.account,
       });
-      await nft.write.safeMint([employee.account.address, "uri2"], {
+      await registry.write.recognize([employee.account.address, "uri2"], {
         account: minter.account,
       });
 
@@ -310,7 +331,7 @@ describe("NFT57B", function () {
       // ERC721Metadata interface ID: 0x5b5e139f
       expect(await nft.read.supportsInterface(["0x5b5e139f"])).to.be.true;
 
-      // AccessControl interface ID: 0x7965db0b
+      // AccessControl interface ID: 0x7965db0b (still supported for DEFAULT_ADMIN_ROLE)
       expect(await nft.read.supportsInterface(["0x7965db0b"])).to.be.true;
 
       // ERC4906 (ERC721URIStorage) interface ID: 0x49064906

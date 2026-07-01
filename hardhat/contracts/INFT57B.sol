@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /// @title INFT57B — 57Blocks Kudos NFT Interface
-/// @notice Minimal interface for cross-contract role management, minting, and claiming
+/// @notice Minimal interface for minting and claiming via CompanyRegistry
 interface INFT57B {
     /// @notice Mint a new NFT to `to` with the given URI
     /// @param to Recipient address
@@ -14,14 +14,4 @@ interface INFT57B {
     /// @param tokenId The ID of the token to claim
     /// @dev Caller must be the token owner
     function claim(uint256 tokenId) external;
-
-    /// @notice Grant a role to an account
-    function grantRole(bytes32 role, address account) external;
-
-    /// @notice Revoke a role from an account
-    function revokeRole(bytes32 role, address account) external;
-
-    /// @notice Returns the identifier of the MINTER_ROLE
-    /// @return bytes32 The role hash
-    function MINTER_ROLE() external view returns (bytes32);
 }
