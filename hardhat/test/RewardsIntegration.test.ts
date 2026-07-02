@@ -478,7 +478,7 @@ describe("RewardsIntegration", function () {
       );
     });
 
-    it("R7-Error: should revert with EmployeeNotInCompany when employee not registered", async function () {
+    it("R7-Error: should revert with EmployeeNotRegistered when employee not registered", async function () {
       const { registry, owner, companyAdmin, other } =
         await loadFixture(integrationFixture);
 
@@ -497,7 +497,7 @@ describe("RewardsIntegration", function () {
             account: companyAdmin.account,
           }),
         registry.abi,
-        "EmployeeNotInCompany"
+        "EmployeeNotRegistered"
       );
     });
   });

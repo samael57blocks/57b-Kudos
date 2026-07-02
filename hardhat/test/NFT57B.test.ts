@@ -319,7 +319,7 @@ describe("NFT57B", function () {
   });
 
   describe("R5: supportsInterface", function () {
-    it("R5: should return true for ERC721, ERC721Enumerable, ERC721URIStorage, and AccessControl interface IDs", async function () {
+    it("R5: should return true for ERC721, ERC721Enumerable, ERC721URIStorage interface IDs, false for AccessControl", async function () {
       const { nft } = await loadFixture(deployFixture);
 
       // ERC721 interface ID: 0x80ac58cd
@@ -331,8 +331,8 @@ describe("NFT57B", function () {
       // ERC721Metadata interface ID: 0x5b5e139f
       expect(await nft.read.supportsInterface(["0x5b5e139f"])).to.be.true;
 
-      // AccessControl interface ID: 0x7965db0b (still supported for DEFAULT_ADMIN_ROLE)
-      expect(await nft.read.supportsInterface(["0x7965db0b"])).to.be.true;
+      // AccessControl interface ID: 0x7965db0b (excluded by design — contract no longer advertises roles)
+      expect(await nft.read.supportsInterface(["0x7965db0b"])).to.be.false;
 
       // ERC4906 (ERC721URIStorage) interface ID: 0x49064906
       expect(await nft.read.supportsInterface(["0x49064906"])).to.be.true;

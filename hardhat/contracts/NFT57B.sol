@@ -179,10 +179,13 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
         return super.tokenURI(tokenId);
     }
 
-    /// @notice Override supportsInterface for ERC721, ERC721Enumerable, ERC721URIStorage, AccessControl
+    /// @notice Override supportsInterface for ERC721, ERC721Enumerable, ERC721URIStorage
+    /// @dev AccessControl interface (0x7965db0b) is intentionally excluded — contract no longer
+    ///      advertises role-based access even though DEFAULT_ADMIN_ROLE is still inherited internally.
     function supportsInterface(
         bytes4 interfaceId
     ) public view override(ERC721Enumerable, ERC721URIStorage, AccessControl) returns (bool) {
-        return super.supportsInterface(interfaceId);
+        return ERC721Enumerable.supportsInterface(interfaceId) ||
+            ERC721URIStorage.supportsInterface(interfaceId);
     }
 }

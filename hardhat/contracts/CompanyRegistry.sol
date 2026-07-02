@@ -61,9 +61,6 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
     //  Reward Orchestration Errors
     // ══════════════════════════════════════════════════════
 
-    /// @notice Revert when an employee is not registered to any company
-    error EmployeeNotInCompany(address employee);
-
     /// @notice Revert when caller is not the admin of the employee's company
     error OnlyCompanyAdmin(address caller, uint256 companyId);
 
@@ -187,7 +184,7 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
     function recognize(address employee, string calldata uri) external returns (uint256 tokenId) {
         uint256 stored = _employeeCompanies[employee];
         if (stored == 0) {
-            revert EmployeeNotInCompany(employee);
+            revert EmployeeNotRegistered(employee);
         }
 
         uint256 companyId = stored - 1;
