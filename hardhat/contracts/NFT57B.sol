@@ -5,20 +5,29 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "./ICompanyRegistry.sol";
 
 /// @notice Emitted when a non-admin tries to transfer an NFT57B token between non-zero addresses
 error TransferNotAllowed(uint256 tokenId, address from, address to);
 
-/// @title NFT57B — 57Blocks Kudos Non-Transferable NFT
-/// @notice Core ERC-721 token with non-transferable policy, role-based minting/burning, and pausable mint
-/// @dev Combines ERC721URIStorage, ERC721Enumerable, AccessControl, and Pausable via OZ multi-inheritance.
-///      The _update override enforces a non-transferable policy: only DEFAULT_ADMIN_ROLE can transfer.
-///      safeMint is pausable; burn is NOT (admin recovery when paused).
-contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant MINTER_ADMIN_ROLE = keccak256("MINTER_ADMIN_ROLE");
+/// @notice Emitted when a non-owner tries to claim a token
+error ClaimNotAllowed(uint256 tokenId, address caller);
 
+/// @notice Emitted when companyRegistry is not set before claim
+error CompanyRegistryNotSet();
+
+/// @notice Emitted when a non-CompanyRegistry caller tries to mint
+error OnlyCompanyRegistry(address caller);
+
+/// @title NFT57B — 57Blocks Kudos Non-Transferable NFT
+/// @notice Core ERC-721 token with non-transferable policy, CompanyRegistry-only minting, and pausable mint
+/// @dev Combines ERC721URIStorage, ERC721Enumerable, AccessControl (DEFAULT_ADMIN only), and Pausable.
+///      Only CompanyRegistry can mint via safeMint. Admin controls pause/burn/setCompanyRegistry.
+contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
     uint256 private _nextTokenId;
+
+    /// @notice Address of the CompanyRegistry contract for minting and reward orchestration
+    address public companyRegistry;
 
     /// @notice Emitted when a new NFT is minted
     /// @param tokenId The ID of the minted token
@@ -32,20 +41,33 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
     /// @param caller The address that initiated the burn
     event NFTBurned(uint256 indexed tokenId, address indexed from, address indexed caller);
 
+    /// @notice Emitted when a claim is initiated (token burned, rewards pending)
+    /// @param tokenId The ID of the claimed token
+    /// @param employee The address that claimed the token
+    event ClaimInitiated(uint256 indexed tokenId, address indexed employee);
+
+    /// @notice Emitted when the CompanyRegistry address is updated
+    /// @param registry The new CompanyRegistry address
+    event CompanyRegistryUpdated(address indexed registry);
+
+    /// @notice Restrict function to the CompanyRegistry contract
+    modifier onlyCompanyRegistry() {
+        if (_msgSender() != companyRegistry) revert OnlyCompanyRegistry(_msgSender());
+        _;
+    }
+
     /// @notice Initializes the NFT57B contract
-    /// @param defaultAdmin Address that receives DEFAULT_ADMIN_ROLE and MINTER_ADMIN_ROLE
+    /// @param defaultAdmin Address that receives DEFAULT_ADMIN_ROLE
     constructor(address defaultAdmin) ERC721("57Blocks Kudos", "57B") {
-        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin); // grants DEFAULT_ADMIN_ROLE (super admin) to defaultAdmin
-        _grantRole(MINTER_ADMIN_ROLE, defaultAdmin);  // also grants MINTER_ADMIN_ROLE (minters admin) to defaultAdmin
-        _setRoleAdmin(MINTER_ROLE, MINTER_ADMIN_ROLE); // MINTER_ADMIN_ROLE controls MINTER_ROLE
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
     }
 
     /// @notice Mint a new NFT to `to` with the given URI
     /// @param to Recipient address
     /// @param uri Token metadata URI
     /// @return tokenId The ID of the newly minted token
-    /// @dev Only callable by MINTER_ROLE. Reverts when paused.
-    function safeMint(address to, string calldata uri) external onlyRole(MINTER_ROLE) whenNotPaused returns (uint256) {
+    /// @dev Only callable by CompanyRegistry. Reverts when paused.
+    function safeMint(address to, string calldata uri) external onlyCompanyRegistry whenNotPaused returns (uint256) {
         uint256 tokenId = _nextTokenId;
         unchecked {
             _nextTokenId++;
@@ -77,6 +99,41 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
     /// @dev Only callable by DEFAULT_ADMIN_ROLE
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
+    }
+
+    /// @notice Set the CompanyRegistry contract address for reward orchestration
+    /// @param registry_ The CompanyRegistry contract address
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE. Emits CompanyRegistryUpdated.
+    function setCompanyRegistry(address registry_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        companyRegistry = registry_;
+        emit CompanyRegistryUpdated(registry_);
+    }
+
+    /// @notice Claim a token by burning it and triggering reward distribution
+    /// @param tokenId The ID of the token to claim
+    /// @dev CEI pattern: burn first, then external callback.
+    ///      Only the token owner can claim. Contract must NOT be paused.
+    ///      CompanyRegistry must be set before calling.
+    function claim(uint256 tokenId) external whenNotPaused {
+        if (_ownerOf(tokenId) != _msgSender()) {
+            revert ClaimNotAllowed(tokenId, _msgSender());
+        }
+
+        address registry = companyRegistry;
+        if (registry == address(0)) {
+            revert CompanyRegistryNotSet();
+        }
+
+        // Capture URI BEFORE burn — OZ v5 _burn clears URI storage
+        string memory uri = tokenURI(tokenId);
+
+        // CEI: internal state change first (burn)
+        _burn(tokenId);
+
+        emit ClaimInitiated(tokenId, _msgSender());
+
+        // CEI: external callback after state change
+        ICompanyRegistry(registry).onClaimed(_msgSender(), tokenId, uri);
     }
 
     // ══════════════════════════════════════════════════════
@@ -122,10 +179,13 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
         return super.tokenURI(tokenId);
     }
 
-    /// @notice Override supportsInterface for ERC721, ERC721Enumerable, ERC721URIStorage, AccessControl
+    /// @notice Override supportsInterface for ERC721, ERC721Enumerable, ERC721URIStorage
+    /// @dev AccessControl interface (0x7965db0b) is intentionally excluded — contract no longer
+    ///      advertises role-based access even though DEFAULT_ADMIN_ROLE is still inherited internally.
     function supportsInterface(
         bytes4 interfaceId
     ) public view override(ERC721Enumerable, ERC721URIStorage, AccessControl) returns (bool) {
-        return super.supportsInterface(interfaceId);
+        return ERC721Enumerable.supportsInterface(interfaceId) ||
+            ERC721URIStorage.supportsInterface(interfaceId);
     }
 }
