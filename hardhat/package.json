@@ -7,9 +7,11 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "coverage": "hardhat coverage",
-    "deploy:sepolia": "hardhat ignition deploy ignition/modules/NFT57B.ts --network sepolia",
-    "verify:sepolia": "hardhat ignition verify --network sepolia",
     "node": "hardhat node",
+    "deploy:localhost": "hardhat ignition deploy ignition/modules/NFT57B.ts --network localhost --parameters ignition/params/localhost.json",
+    "deploy:sepolia": "hardhat ignition deploy ignition/modules/NFT57B.ts --network sepolia --parameters ignition/params/sepolia.json",
+    "verify:sepolia": "hardhat ignition verify --network sepolia",
+    "seed:localhost": "hardhat run scripts/seed.ts --network localhost",
     "clean": "hardhat clean"
   },
   "devDependencies": {
