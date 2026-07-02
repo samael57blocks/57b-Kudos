@@ -8,32 +8,21 @@ import "./IReward.sol";
 import "./ICompanyRegistry.sol";
 
 /// @title CompanyRegistry — 57Blocks Kudos Company Registration
-/// @notice Manages company lifecycle (Pending → Approved → Rejected), minter assignments,
+/// @notice Manages company registration, employee assignments,
 ///         and reward orchestration (recognize + claim callbacks).
-/// @dev Holds no roles directly. The external admin MUST grant this contract MINTER_ADMIN_ROLE
-///      on NFT57B so addMinter/removeMinter can call grantRole/revokeRole.
+/// @dev Companies are created directly active by DEFAULT_ADMIN_ROLE.
+///      No approval/rejection lifecycle. Only CompanyRegistry calls safeMint on NFT57B.
 contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
-    /// @notice Company lifecycle status
-    enum CompanyStatus { Pending, Approved, Rejected }
-
     /// @notice Company data
     struct Company {
         uint256 id;
         string name;
         address admin;
-        CompanyStatus status;
         uint256 createdAt;
-        uint256 updatedAt;
     }
 
     /// @notice Emitted when a new company is registered
     event CompanyRegistered(uint256 indexed companyId, string name, address indexed admin);
-
-    /// @notice Emitted when a company is approved
-    event CompanyApproved(uint256 indexed companyId);
-
-    /// @notice Emitted when a company is rejected
-    event CompanyRejected(uint256 indexed companyId);
 
     /// @notice Emitted when an employee registers to a company
     event EmployeeRegistered(uint256 indexed companyId, address indexed employee);
@@ -56,11 +45,8 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
     /// @param recognitionToken The RecognitionToken contract address
     event RewardContractsUpdated(address bonusReward, address recognitionToken);
 
-    /// @notice Revert when attempting to approve/reject a company that is not Pending
-    error CompanyNotPending(uint256 companyId, CompanyStatus currentStatus);
-
-    /// @notice Revert when attempting to add a minter for a company that is not Approved
-    error CompanyNotApproved(uint256 companyId, CompanyStatus currentStatus);
+    /// @notice Revert when trying to operate on a company that does not exist
+    error CompanyNotFound(uint256 companyId);
 
     /// @notice Revert when an employee is already registered to a company
     error EmployeeAlreadyRegistered(address employee, uint256 companyId);
@@ -74,9 +60,6 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
     // ══════════════════════════════════════════════════════
     //  Reward Orchestration Errors
     // ══════════════════════════════════════════════════════
-
-    /// @notice Revert when an employee is not registered to any approved company
-    error EmployeeNotInApprovedCompany(address employee);
 
     /// @notice Revert when caller is not the admin of the employee's company
     error OnlyCompanyAdmin(address caller, uint256 companyId);
@@ -118,11 +101,11 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
     /// @param name Company name
     /// @param adminWallet Company admin wallet address
     /// @return companyId The assigned company ID
-    /// @dev Public — any wallet can register a company
+    /// @dev Only DEFAULT_ADMIN_ROLE can register a company
     function registerCompany(
         string calldata name,
         address adminWallet
-    ) external returns (uint256 companyId) {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 companyId) {
         companyId = _nextCompanyId;
         unchecked {
             _nextCompanyId++;
@@ -132,69 +115,19 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
             id: companyId,
             name: name,
             admin: adminWallet,
-            status: CompanyStatus.Pending,
-            createdAt: block.timestamp,
-            updatedAt: block.timestamp
+            createdAt: block.timestamp
         });
 
         emit CompanyRegistered(companyId, name, adminWallet);
     }
 
-    /// @notice Approve a company (changes status from Pending to Approved)
-    /// @param companyId The company to approve
-    /// @dev Only DEFAULT_ADMIN_ROLE. Reverts if company is not Pending.
-    function approveCompany(uint256 companyId) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Company storage company = _companies[companyId];
-        if (company.status != CompanyStatus.Pending) {
-            revert CompanyNotPending(companyId, company.status);
-        }
-        company.status = CompanyStatus.Approved;
-        company.updatedAt = block.timestamp;
-        emit CompanyApproved(companyId);
-    }
-
-    /// @notice Reject a company (changes status from Pending to Rejected)
-    /// @param companyId The company to reject
-    /// @dev Only DEFAULT_ADMIN_ROLE. Reverts if company is not Pending.
-    function rejectCompany(uint256 companyId) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Company storage company = _companies[companyId];
-        if (company.status != CompanyStatus.Pending) {
-            revert CompanyNotPending(companyId, company.status);
-        }
-        company.status = CompanyStatus.Rejected;
-        company.updatedAt = block.timestamp;
-        emit CompanyRejected(companyId);
-    }
-
-    /// @notice Grant MINTER_ROLE on NFT57B to a wallet for an approved company
-    /// @param companyId The company (must be Approved)
-    /// @param minterWallet Wallet to receive MINTER_ROLE
-    /// @dev Only DEFAULT_ADMIN_ROLE. This contract MUST have MINTER_ADMIN_ROLE on NFT57B.
-    function addMinter(
-        uint256 companyId,
-        address minterWallet
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Company storage company = _companies[companyId];
-        if (company.status != CompanyStatus.Approved) {
-            revert CompanyNotApproved(companyId, company.status);
-        }
-        nft57b.grantRole(nft57b.MINTER_ROLE(), minterWallet);
-    }
-
-    /// @notice Revoke MINTER_ROLE on NFT57B from a wallet
-    /// @param minterWallet Wallet to lose MINTER_ROLE
-    /// @dev Only DEFAULT_ADMIN_ROLE. This contract MUST have MINTER_ADMIN_ROLE on NFT57B.
-    function removeMinter(address minterWallet) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        nft57b.revokeRole(nft57b.MINTER_ROLE(), minterWallet);
-    }
-
-    /// @notice Register msg.sender as an employee of an approved company
-    /// @param companyId The company to join (must be Approved)
+    /// @notice Register msg.sender as an employee of a company
+    /// @param companyId The company to join
     /// @dev Public — any wallet can register. One wallet → one company.
     function registerEmployee(uint256 companyId) external {
         Company storage company = _companies[companyId];
-        if (company.status != CompanyStatus.Approved) {
-            revert CompanyNotApproved(companyId, company.status);
+        if (company.admin == address(0)) {
+            revert CompanyNotFound(companyId);
         }
 
         if (_employeeCompanies[msg.sender] != 0) {
@@ -239,34 +172,23 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
         return _companies[companyId];
     }
 
-    /// @notice Check if a company is approved
-    /// @param companyId The company ID
-    /// @return true if company status is Approved, false otherwise
-    function isApproved(uint256 companyId) external view returns (bool) {
-        return _companies[companyId].status == CompanyStatus.Approved;
-    }
-
     // ══════════════════════════════════════════════════════
     //  Reward Orchestration Functions
     // ══════════════════════════════════════════════════════
 
     /// @notice Recognize an employee by minting a Kudos NFT
-    /// @param employee The employee address (must be registered to an approved company)
+    /// @param employee The employee address (must be registered to a company)
     /// @param uri Metadata URI for the Kudos NFT
     /// @return tokenId The ID of the minted token
-    /// @dev Only callable by the admin of the approved company the employee belongs to.
+    /// @dev Only callable by the admin of the company the employee belongs to.
     function recognize(address employee, string calldata uri) external returns (uint256 tokenId) {
         uint256 stored = _employeeCompanies[employee];
         if (stored == 0) {
-            revert EmployeeNotInApprovedCompany(employee);
+            revert EmployeeNotRegistered(employee);
         }
 
         uint256 companyId = stored - 1;
         Company storage company = _companies[companyId];
-
-        if (company.status != CompanyStatus.Approved) {
-            revert CompanyNotApproved(companyId, company.status);
-        }
 
         if (company.admin != _msgSender()) {
             revert OnlyCompanyAdmin(_msgSender(), companyId);

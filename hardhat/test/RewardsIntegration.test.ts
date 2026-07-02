@@ -80,13 +80,6 @@ describe("RewardsIntegration", function () {
 
     // ── Wire up roles ──
 
-    // Grant MINTER_ADMIN_ROLE on NFT57B to CompanyRegistry
-    // so CompanyRegistry can grant/revoke MINTER_ROLE
-    const MINTER_ADMIN_ROLE = await nft.read.MINTER_ADMIN_ROLE();
-    await nft.write.grantRole([MINTER_ADMIN_ROLE, registry.address], {
-      account: owner.account,
-    });
-
     // Grant MINTER_ROLE on BonusReward to CompanyRegistry
     const BONUS_MINTER_ROLE = await bonus.read.MINTER_ROLE();
     await bonus.write.grantRole([BONUS_MINTER_ROLE, registry.address], {
@@ -102,7 +95,7 @@ describe("RewardsIntegration", function () {
 
     // ── Wire up contract addresses ──
 
-    // Set CompanyRegistry address on NFT57B
+    // Set CompanyRegistry address on NFT57B (enables safeMint from registry)
     await nft.write.setCompanyRegistry([registry.address], {
       account: owner.account,
     });
@@ -117,15 +110,6 @@ describe("RewardsIntegration", function () {
       account: owner.account,
     });
 
-    // Grant MINTER_ROLE on NFT57B to CompanyRegistry (for recognize()) AND companyAdmin (for direct safeMint)
-    const NFT_MINTER_ROLE = await nft.read.MINTER_ROLE();
-    await nft.write.grantRole([NFT_MINTER_ROLE, registry.address], {
-      account: owner.account,
-    });
-    await nft.write.grantRole([NFT_MINTER_ROLE, companyAdmin.account.address], {
-      account: owner.account,
-    });
-
     return {
       nft,
       registry,
@@ -136,11 +120,10 @@ describe("RewardsIntegration", function () {
       employee,
       other,
       rewardAmount,
-      NFT_MINTER_ROLE,
     };
   }
 
-  describe("R1: Full flow — register → approve → employee → recognize → claim", function () {
+  describe("R1: Full flow — register → employee → recognize → claim", function () {
     it("R1-Happy: should complete the full rewards cycle end-to-end", async function () {
       const {
         nft,
@@ -161,15 +144,12 @@ describe("RewardsIntegration", function () {
         { account: owner.account }
       );
 
-      // ── Step 2: Approve company ──
-      await registry.write.approveCompany([0n], { account: owner.account });
-
-      // ── Step 3: Register employee ──
+      // ── Step 2: Register employee ──
       await registry.write.registerEmployee([0n], {
         account: employee.account,
       });
 
-      // ── Step 4: Recognize (companyAdmin calls registry.recognize()) ──
+      // ── Step 3: Recognize (companyAdmin calls registry.recognize()) ──
       const recognizeHash = await registry.write.recognize(
         [employee.account.address, uri],
         { account: companyAdmin.account }
@@ -207,25 +187,25 @@ describe("RewardsIntegration", function () {
         expect(recognizeLog.args.tokenId).to.equal(0n);
       }
 
-      // ── Step 5: Claim (employee claims token 0) ──
+      // ── Step 4: Claim (employee claims token 0) ──
       await nft.write.claim([0n], { account: employee.account });
 
-      // ── Step 6: Verify NFT is burned ──
+      // ── Step 5: Verify NFT is burned ──
       expect(await nft.read.balanceOf([employee.account.address])).to.equal(0n);
 
-      // ── Step 7: Verify BonusReward balance ──
+      // ── Step 6: Verify BonusReward balance ──
       const bonusBalance = await bonus.read.balanceOf([
         employee.account.address,
       ]);
       expect(bonusBalance).to.equal(rewardAmount);
 
-      // ── Step 8: Verify RecognitionToken balance ──
+      // ── Step 7: Verify RecognitionToken balance ──
       const recogBalance = await recognition.read.balanceOf([
         employee.account.address,
       ]);
       expect(recogBalance).to.equal(1n);
 
-      // ── Step 9: Verify RecognitionToken metadata ──
+      // ── Step 8: Verify RecognitionToken metadata ──
       const recogTokenURI = await recognition.read.tokenURI([0n]);
       expect(recogTokenURI).to.equal(uri);
     });
@@ -242,16 +222,15 @@ describe("RewardsIntegration", function () {
         other,
       } = await loadFixture(integrationFixture);
 
-      // Setup: register, approve, employee, mint
+      // Setup: register company, employee, mint via recognize
       await registry.write.registerCompany(
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.approveCompany([0n], { account: owner.account });
       await registry.write.registerEmployee([0n], {
         account: employee.account,
       });
-      await nft.write.safeMint([employee.account.address, "ipfs://test"], {
+      await registry.write.recognize([employee.account.address, "ipfs://test"], {
         account: companyAdmin.account,
       });
 
@@ -272,16 +251,15 @@ describe("RewardsIntegration", function () {
         employee,
       } = await loadFixture(integrationFixture);
 
-      // Setup: register, approve, employee, mint
+      // Setup: register company, employee, mint via recognize
       await registry.write.registerCompany(
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.approveCompany([0n], { account: owner.account });
       await registry.write.registerEmployee([0n], {
         account: employee.account,
       });
-      await nft.write.safeMint([employee.account.address, "ipfs://test"], {
+      await registry.write.recognize([employee.account.address, "ipfs://test"], {
         account: companyAdmin.account,
       });
 
@@ -297,68 +275,48 @@ describe("RewardsIntegration", function () {
     });
 
     it("R2-Error: should revert with CompanyRegistryNotSet when companyRegistry is 0", async function () {
-      const { nft, owner, employee, companyAdmin } =
+      const { nft, registry, owner, companyAdmin, employee } =
         await loadFixture(integrationFixture);
-      const { registry: r, ...rest } = await loadFixture(integrationFixture);
-      // Deploy without setCompanyRegistry — the fixture always sets it,
-      // so we need a special deploy that skips that step.
-      // Instead, deploy manually with a separate tx to zero it out.
-      const {
-        nft: nft2,
-        registry: reg2,
-        owner: owner2,
-        companyAdmin: admin2,
-        employee: emp2,
-      } = await loadFixture(integrationFixture);
+
+      // Setup: register company, employee, mint via recognize
+      await registry.write.registerCompany(
+        ["57Blocks", companyAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.registerEmployee([0n], {
+        account: employee.account,
+      });
+      await registry.write.recognize([employee.account.address, "ipfs://test"], {
+        account: companyAdmin.account,
+      });
 
       // Reset companyRegistry to zero via admin
-      await nft2.write.setCompanyRegistry([
+      await nft.write.setCompanyRegistry([
         "0x0000000000000000000000000000000000000000",
-      ], { account: owner2.account });
-
-      // Mint a token first
-      await reg2.write.registerCompany(["ACME", admin2.account.address], {
-        account: owner2.account,
-      });
-      await reg2.write.approveCompany([0n], { account: owner2.account });
-      await reg2.write.registerEmployee([0n], { account: emp2.account });
-
-      const NFT_MINTER = await nft2.read.MINTER_ROLE();
-      await nft2.write.grantRole([NFT_MINTER, admin2.account.address], {
-        account: owner2.account,
-      });
-      await nft2.write.safeMint([emp2.account.address, "ipfs://test"], {
-        account: admin2.account,
-      });
+      ], { account: owner.account });
 
       // Claim should revert because companyRegistry is 0
       await expectRevertWithError(
-        () => nft2.write.claim([0n], { account: emp2.account }),
-        nft2.abi,
+        () => nft.write.claim([0n], { account: employee.account }),
+        nft.abi,
         "CompanyRegistryNotSet"
       );
     });
   });
 
   describe("R3: Recognize — edge cases", function () {
-    it("R3-Error: should revert with CompanyNotApproved when company is not approved", async function () {
-      const { registry, owner, companyAdmin, employee } =
+    it("R3-Error: should revert with CompanyNotFound when company does not exist", async function () {
+      const { registry, employee } =
         await loadFixture(integrationFixture);
 
-      // Register company but don't approve
-      await registry.write.registerCompany(
-        ["57Blocks", companyAdmin.account.address],
-        { account: owner.account }
-      );
-
-      // Try to register employee to a non-approved company
+      // Try to register employee to a non-existent company
       await expectRevertWithError(
         () =>
           registry.write.registerEmployee([0n], {
             account: employee.account,
           }),
         registry.abi,
-        "CompanyNotApproved"
+        "CompanyNotFound"
       );
     });
   });
@@ -379,11 +337,9 @@ describe("RewardsIntegration", function () {
     });
 
     it("R4-Error: should revert with RewardContractsNotSet when reward contracts are zero", async function () {
-      // Deploy a minimal setup without setting reward contracts
-      const { owner: o } = await hre.viem.getWalletClients();
-      // We need the NFT and registry but with reward contracts at 0
-      const [owner, , , ] = await hre.viem.getWalletClients();
+      const [owner] = await hre.viem.getWalletClients();
 
+      // Deploy without reward contracts
       const nft = await hre.viem.deployContract("NFT57B", [
         owner.account.address,
       ]);
@@ -392,32 +348,26 @@ describe("RewardsIntegration", function () {
         owner.account.address,
       ]);
 
-      // Set companyRegistry on NFT57B
+      // Set companyRegistry on NFT57B so safeMint can be called
       await nft.write.setCompanyRegistry([registry.address], {
         account: owner.account,
       });
 
-      // Do NOT set reward contracts
-
-      // We need to call claim on NFT57B which will call onClaimed,
-      // but we don't have reward contracts set
-      const MINTER_ADMIN_ROLE = await nft.read.MINTER_ADMIN_ROLE();
-      await nft.write.grantRole([MINTER_ADMIN_ROLE, registry.address], {
+      // Register company and employee to use recognize for minting
+      await registry.write.registerCompany(
+        ["Test", owner.account.address],
+        { account: owner.account }
+      );
+      await registry.write.registerEmployee([0n], {
         account: owner.account,
       });
 
-      // Grant MINTER to owner and mint
-      const NFT_MINTER_ROLE = await nft.read.MINTER_ROLE();
-      await nft.write.grantRole([NFT_MINTER_ROLE, owner.account.address], {
-        account: owner.account,
-      });
-
-      await nft.write.safeMint([owner.account.address, "ipfs://test"], {
+      // Mint via recognize
+      await registry.write.recognize([owner.account.address, "ipfs://test"], {
         account: owner.account,
       });
 
       // Claim should fail because onClaimed reverts with RewardContractsNotSet
-      // The error is defined on CompanyRegistry, so use registry.abi for decoding
       await expectRevertWithError(
         () => nft.write.claim([0n], { account: owner.account }),
         registry.abi,
@@ -480,7 +430,6 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.approveCompany([0n], { account: owner.account });
       await registry.write.registerEmployee([0n], {
         account: employee.account,
       });
@@ -501,7 +450,6 @@ describe("RewardsIntegration", function () {
         await loadFixture(integrationFixture);
 
       const uri = "ipfs://test";
-      const [owner2] = await hre.viem.getWalletClients();
       const [otherAdmin] = await hre.viem.getWalletClients();
 
       // Setup company 0 and employee
@@ -509,7 +457,6 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.approveCompany([0n], { account: owner.account });
       await registry.write.registerEmployee([0n], {
         account: employee.account,
       });
@@ -519,7 +466,6 @@ describe("RewardsIntegration", function () {
         ["OtherCorp", otherAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.approveCompany([1n], { account: owner.account });
 
       // otherAdmin (admin of company 1, not company 0) tries to recognize employee of company 0
       await expectRevertWithError(
@@ -532,7 +478,7 @@ describe("RewardsIntegration", function () {
       );
     });
 
-    it("R7-Error: should revert with EmployeeNotInApprovedCompany when employee not registered", async function () {
+    it("R7-Error: should revert with EmployeeNotRegistered when employee not registered", async function () {
       const { registry, owner, companyAdmin, other } =
         await loadFixture(integrationFixture);
 
@@ -543,7 +489,6 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.approveCompany([0n], { account: owner.account });
 
       // Try to recognize an unregistered employee
       await expectRevertWithError(
@@ -552,13 +497,9 @@ describe("RewardsIntegration", function () {
             account: companyAdmin.account,
           }),
         registry.abi,
-        "EmployeeNotInApprovedCompany"
+        "EmployeeNotRegistered"
       );
     });
-
-    // Note: CompanyNotApproved in recognize() is defense-in-depth.
-    // The path is unreachable because registerEmployee already blocks
-    // non-approved companies. Tested at the registerEmployee level (R3).
   });
 
   describe("R6: Events on new functions", function () {
@@ -570,11 +511,10 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.approveCompany([0n], { account: owner.account });
       await registry.write.registerEmployee([0n], {
         account: employee.account,
       });
-      await nft.write.safeMint([employee.account.address, "ipfs://test"], {
+      await registry.write.recognize([employee.account.address, "ipfs://test"], {
         account: companyAdmin.account,
       });
 
@@ -661,7 +601,6 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.approveCompany([0n], { account: owner.account });
       await registry.write.registerEmployee([0n], {
         account: employee.account,
       });
