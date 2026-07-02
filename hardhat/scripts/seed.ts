@@ -1,5 +1,8 @@
 import { viem } from "hardhat";
 import { parseAbi } from "viem";
+import { existsSync } from "fs";
+import { uploadImage } from "./lib/uploadImage";
+import { uploadMetadata } from "./lib/uploadMetadata";
 
 /**
  * Seed script for local development.
@@ -83,23 +86,64 @@ async function main() {
 
   // ── Step 3: Mint a test Kudos NFT ───────────────────────
   console.log("3️⃣  Minting a test Kudos NFT...");
-  const testUri =
-    "data:application/json;base64," +
-    Buffer.from(
-      JSON.stringify({
-        title: "Welcome to the team!",
-        description: "First Kudos for joining 57Blocks Labs",
-        value: "1000",
-        date: new Date().toISOString().split("T")[0],
-        employeeName: "Dev Test",
-      }),
-    ).toString("base64");
+
+  // Build the token URI — either via IPFS (if Pinata keys are available)
+  // or fall back to an inline data URI for local development
+  let tokenUri: string;
+
+  if (process.env.PINATA_API_KEY && process.env.PINATA_SECRET_KEY) {
+    // ── IPFS pipeline ──────────────────────────────────────
+    const placeholderPath = "scripts/assets/placeholder.png";
+    if (!existsSync(placeholderPath)) {
+      throw new Error(
+        `Placeholder image not found at ${placeholderPath}. ` +
+        "Run the seed script from the hardhat/ directory.",
+      );
+    }
+
+    console.log("   📤 Uploading placeholder image to IPFS...");
+    const imgCid = await uploadImage(placeholderPath);
+    console.log(`   ✅ Image uploaded: ${imgCid}`);
+
+    const metadata = {
+      name: "Welcome to the team!",
+      description: "First Kudos for joining 57Blocks Labs",
+      image: imgCid,
+      attributes: [
+        { trait_type: "Value", value: "1000" },
+        {
+          trait_type: "Date",
+          value: new Date().toISOString().split("T")[0],
+        },
+        { trait_type: "Employee", value: "Dev Test" },
+      ],
+    };
+
+    console.log("   📤 Uploading metadata to IPFS...");
+    const metaCid = await uploadMetadata(metadata);
+    console.log(`   ✅ Metadata uploaded: ${metaCid}`);
+
+    tokenUri = metaCid; // already in the form "ipfs://<CID>"
+  } else {
+    // ── Data URI fallback (no Pinata keys) ─────────────────
+    tokenUri =
+      "data:application/json;base64," +
+      Buffer.from(
+        JSON.stringify({
+          title: "Welcome to the team!",
+          description: "First Kudos for joining 57Blocks Labs",
+          value: "1000",
+          date: new Date().toISOString().split("T")[0],
+          employeeName: "Dev Test",
+        }),
+      ).toString("base64");
+  }
 
   const mintHash = await deployer.writeContract({
     address: companyRegistryAddress,
     abi: COMPANY_REGISTRY_ABI,
     functionName: "recognize",
-    args: [deployer.account.address, testUri],
+    args: [deployer.account.address, tokenUri],
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash: mintHash });
   console.log(`   ✅ Kudos minted! Tx: ${receipt.transactionHash}\n`);
