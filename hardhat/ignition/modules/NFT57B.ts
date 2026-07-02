@@ -1,4 +1,4 @@
-import { buildModule } from "@nomicfoundation/hardhat-ignition-viem/modules";
+import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 /**
  * Default reward amount: 100 $57BB tokens (18 decimals).

@@ -34,7 +34,8 @@ const NFT57B_ABI = parseAbi([
 async function main() {
   // ── Resolve deployed addresses from Ignition ─────────────
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const deployedAddresses = require("../ignition/deployments/localhost/deployed_addresses.json");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const deployedAddresses = require("../ignition/deployments/chain-31337/deployed_addresses.json");
 
   const nft57bAddress = deployedAddresses["NFT57B#NFT57B"] as `0x${string}`;
   const companyRegistryAddress = deployedAddresses["NFT57B#CompanyRegistry"] as `0x${string}`;
