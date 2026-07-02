@@ -12,10 +12,13 @@
     "deploy:sepolia": "hardhat ignition deploy ignition/modules/NFT57B.ts --network sepolia --parameters ignition/params/sepolia.json",
     "verify:sepolia": "hardhat ignition verify --network sepolia",
     "seed:localhost": "hardhat run scripts/seed.ts --network localhost",
-    "clean": "hardhat clean"
+    "clean": "hardhat clean",
+    "reset:localhost": "rm -rf ignition/deployments/chain-31337",
+    "redeploy:localhost": "pnpm reset:localhost && pnpm deploy:localhost && pnpm seed:localhost"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox-viem": "^4.0.0",
+    "@nomicfoundation/hardhat-ignition": "^0.15.0",
     "@nomicfoundation/hardhat-ignition-viem": "^0.15.0",
     "hardhat": "^2.22.0",
     "dotenv": "^16.4.0",
