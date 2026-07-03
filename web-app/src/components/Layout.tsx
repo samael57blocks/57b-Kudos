@@ -1,0 +1,109 @@
+import type { ReactNode } from 'react'
+import { ConnectButton } from './ConnectButton'
+import { NetworkBadge } from './NetworkBadge'
+import { useUserRole } from '../hooks/useUserRole'
+
+const headerStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '12px 24px',
+  borderBottom: '1px solid var(--border, #e5e4e7)',
+  background: 'var(--bg, #fff)',
+}
+
+const logoStyle: React.CSSProperties = {
+  fontWeight: 700,
+  fontSize: '18px',
+  color: 'var(--text-h, #08060d)',
+  letterSpacing: '-0.3px',
+}
+
+const headerRightStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+}
+
+const sidebarStyle: React.CSSProperties = {
+  width: '220px',
+  borderRight: '1px solid var(--border, #e5e4e7)',
+  padding: '16px 0',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+}
+
+const mainAreaStyle: React.CSSProperties = {
+  display: 'flex',
+  flex: 1,
+  minHeight: 0,
+}
+
+const contentStyle: React.CSSProperties = {
+  flex: 1,
+  padding: '24px',
+  overflowY: 'auto',
+}
+
+const navItemStyle: React.CSSProperties = {
+  padding: '10px 20px',
+  fontSize: '14px',
+  color: 'var(--text, #6b6375)',
+  textDecoration: 'none',
+  borderLeft: '3px solid transparent',
+  transition: 'all 0.15s',
+}
+
+interface LayoutProps {
+  children: ReactNode
+}
+
+/**
+ * Main application layout with header, sidebar navigation, and content area.
+ *
+ * Navigation items are conditionally shown based on the connected wallet's role:
+ * - Admin sees: Company Registration
+ * - Company admin sees: Dashboard
+ * - Employee sees: Portfolio
+ * - Visitor sees: nothing extra
+ */
+export function Layout({ children }: LayoutProps) {
+  const { role } = useUserRole()
+
+  return (
+    <>
+      <header style={headerStyle}>
+        <span style={logoStyle}>🏆 NFT57B</span>
+        <div style={headerRightStyle}>
+          <NetworkBadge />
+          <ConnectButton />
+        </div>
+      </header>
+
+      <div style={mainAreaStyle}>
+        <nav style={sidebarStyle}>
+          <span style={{ ...navItemStyle, cursor: 'default', fontWeight: 600 }}>
+            Navigation
+          </span>
+
+          {role === 'admin' && (
+            <a href="/register" style={navItemStyle}>
+              Register Company
+            </a>
+          )}
+
+          <a href="/dashboard" style={navItemStyle}>
+            Dashboard
+          </a>
+
+          <a href="/portfolio" style={navItemStyle}>
+            My Portfolio
+          </a>
+        </nav>
+
+        <main style={contentStyle}>{children}</main>
+      </div>
+    </>
+  )
+}
