@@ -94,6 +94,93 @@ pnpm deploy:sepolia    # Deploy to Sepolia
 pnpm verify:sepolia    # Verify contracts on Etherscan
 ```
 
+## Metadata & IPFS
+
+NFT metadata (images + attribute JSON) is stored on IPFS via **Pinata** to guarantee immutability and decentralization.
+
+### Flow Architecture
+
+```
+Upload (Hardhat scripts / Web App)
+        │
+        ▼
+    ┌─────────────┐       ┌──────────────────┐
+    │ Pinata API  │──────▶│  IPFS (filecoin) │
+    │ pinFile/    │       │  ┌──────────────┐│
+    │ pinJSON     │       │  │ CID │───────▶│ Content
+    └─────────────┘       │  └──────────────┘│
+        │                 └──────────────────┘
+        │                        │
+        ▼                        ▼
+  ipfs://<CID>        IPFS Gateway (resolution)
+```
+
+**What gets uploaded?**
+1. **Image** — achievement PNG (optional, via `pinFileToIPFS`)
+2. **Metadata JSON** — name, description, image CID, and attributes (via `pinJSONToIPFS`)
+3. The metadata JSON CID is the one stored on-chain as `tokenURI`
+
+**When does it upload?**
+- **Seed script** (`hardhat/scripts/seed.ts`): during local development, uploads placeholder image + metadata and mints a test NFT
+- **Frontend** (`web-app/src/utils/ipfs.ts`): when a company admin mints an NFT from the UI, metadata is uploaded before calling `safeMint`
+
+**How is it resolved?**
+- Contracts store the URI as `ipfs://<CID>`
+- The frontend resolves via `resolveMetadata(uri)` which:
+  1. Extracts the CID from the URI
+  2. Fetches from the configured gateway (`VITE_PINATA_GATEWAY`)
+  3. Caches the result in an LRU (max 50 entries) to avoid unnecessary re-fetches
+
+### Pinata Setup
+
+You need a [Pinata](https://app.pinata.cloud/) account with API keys. Keys go in the `.env` files:
+
+**Hardhat** (deploy/seed scripts):
+```env
+PINATA_API_KEY=your_pinata_api_key
+PINATA_SECRET_KEY=your_pinata_secret_key
+```
+
+**Web App** (frontend — keys are exposed to the client):
+```env
+VITE_PINATA_API_KEY=your_pinata_api_key
+VITE_PINATA_SECRET_KEY=your_pinata_secret_key
+VITE_PINATA_GATEWAY=https://gateway.pinata.cloud
+```
+
+> ⚠️ Pinata keys are not critical secrets (they only allow uploading files to your account), but they're still managed via `.env` and never committed.
+
+### Metadata JSON Structure
+
+Follows the [OpenSea Metadata Standard](https://docs.opensea.io/docs/metadata-standards) for marketplace and explorer compatibility:
+
+```json
+{
+  "name": "Welcome to the team!",
+  "description": "First Kudos for joining 57Blocks Labs",
+  "image": "ipfs://Qm...",
+  "attributes": [
+    { "trait_type": "Value", "value": "1000" },
+    { "trait_type": "Date", "value": "2026-07-03" },
+    { "trait_type": "Employee", "value": "Dev Test" }
+  ]
+}
+```
+
+The structure is identical in both the contract (`MetadataBuilder.sol`) and the frontend (`web-app/src/utils/metadata.ts`) — they both generate the same schema.
+
+### Useful Commands
+
+```bash
+# Upload metadata from hardhat (local seed)
+cd hardhat
+pnpm seed:localhost
+
+# Verify metadata resolution (tests)
+cd hardhat && pnpm test -- --grep upload
+cd web-app  && pnpm test -- --grep ipfs
+```
+
 ## Development Workflow
 
 This project follows a **Spec-Driven Development (SDD)** workflow:
