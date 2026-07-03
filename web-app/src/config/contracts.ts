@@ -49,7 +49,7 @@ export const NFT57B_ABI = parseAbi([
 
 export const COMPANY_REGISTRY_ABI = parseAbi([
   // Read
-  'function getCompany(uint256 companyId) external view returns (tuple(uint256 id, string name, address admin, uint256 createdAt))',
+  'function getCompany(uint256 companyId) external view returns ((uint256 id, string name, address admin, uint256 createdAt))',
   'function getEmployeeCompany(address employee) external view returns (uint256 companyId)',
   'function nft57b() external view returns (address)',
   // Write
