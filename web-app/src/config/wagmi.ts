@@ -1,6 +1,6 @@
 import { createConfig, http } from 'wagmi'
 import { sepolia, hardhat } from 'wagmi/chains'
-import { metaMask, walletConnect, coinbaseWallet } from 'wagmi/connectors'
+import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors'
 
 declare module 'wagmi' {
   interface Register {
@@ -12,7 +12,7 @@ const walletConnectProjectId =
   import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? ''
 
 const connectors = [
-  metaMask(),
+  injected({ target: 'metaMask' }),
   ...(walletConnectProjectId
     ? [walletConnect({ projectId: walletConnectProjectId })]
     : []),
