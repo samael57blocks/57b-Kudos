@@ -2,6 +2,7 @@ import { useRoutes, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { CompanyDashboard } from './views/CompanyDashboard'
+import { EmployeePortfolio } from './views/EmployeePortfolio'
 import { useWalletConnection } from './hooks/useWalletConnection'
 import { useUserRole } from './hooks/useUserRole'
 
@@ -80,6 +81,14 @@ function App() {
       element: (
         <ProtectedRoute allowedRoles={['company_admin']}>
           <CompanyDashboard />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: '/portfolio',
+      element: (
+        <ProtectedRoute allowedRoles={['employee']}>
+          <EmployeePortfolio />
         </ProtectedRoute>
       ),
     },
