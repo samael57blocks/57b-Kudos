@@ -18,14 +18,22 @@ export interface UserRoleResult {
   error: string | null
 }
 
+export interface UseUserRoleOptions {
+  /** When true, promotes `visitor` → `company_admin` (used by T-009 dashboard) */
+  companyAdmin?: boolean
+}
+
 /**
  * Detect the role of the connected wallet by reading from the contracts.
  *
  * - `admin`: has DEFAULT_ADMIN_ROLE on NFT57B (super admin / deployer)
+ * - `company_admin`: promoted from `visitor` when `options.companyAdmin` is true
  * - `employee`: registered in CompanyRegistry
  * - `visitor`: connected but no role
+ *
+ * @param options Optional override to promote visitor → company_admin
  */
-export function useUserRole(): UserRoleResult {
+export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
   const { address } = useAccount()
   const [role, setRole] = useState<UserRole>('visitor')
   const [employeeCompanyId, setEmployeeCompanyId] = useState<number | undefined>()
@@ -89,8 +97,12 @@ export function useUserRole(): UserRoleResult {
     setError(null)
   }, [address, contracts, isAdmin, isAdminLoading, empCompanyRaw, isEmpLoading])
 
+  // Apply companyAdmin override — promotes visitor → company_admin
+  const effectiveRole =
+    options?.companyAdmin && role === 'visitor' ? 'company_admin' : role
+
   return {
-    role,
+    role: effectiveRole,
     employeeCompanyId,
     isLoading: isAdminLoading || isEmpLoading,
     error,
