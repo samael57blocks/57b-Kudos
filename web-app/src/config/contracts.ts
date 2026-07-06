@@ -35,6 +35,7 @@ export function getContractAddresses(): ContractAddresses | null {
 export const NFT57B_ABI = parseAbi([
   // Read
   'function balanceOf(address owner) external view returns (uint256)',
+  'function totalSupply() external view returns (uint256)',
   'function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)',
   'function tokenURI(uint256 tokenId) external view returns (string)',
   'function supportsInterface(bytes4 interfaceId) external view returns (bool)',

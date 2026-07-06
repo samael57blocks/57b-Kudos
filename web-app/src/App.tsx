@@ -1,12 +1,18 @@
+import { useRoutes, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { ProtectedRoute } from './components/ProtectedRoute'
 import { useWalletConnection } from './hooks/useWalletConnection'
 import { useUserRole } from './hooks/useUserRole'
 
-function App() {
+/**
+ * Home page — shows contextual content based on wallet connection and role.
+ * Mirrors the pre-routing App.tsx behavior: welcome, wrong-network, loading,
+ * or role-specific greeting.
+ */
+function HomePage() {
   const { isConnected, isCorrectNetwork, address } = useWalletConnection()
   const { role, isLoading: isRoleLoading } = useUserRole()
 
-  // ── Not connected ────────────────────────────────────────
   if (!isConnected) {
     return (
       <Layout>
@@ -21,7 +27,6 @@ function App() {
     )
   }
 
-  // ── Wrong network ────────────────────────────────────────
   if (!isCorrectNetwork) {
     return (
       <Layout>
@@ -35,7 +40,6 @@ function App() {
     )
   }
 
-  // ── Connected + loading role ─────────────────────────────
   if (isRoleLoading) {
     return (
       <Layout>
@@ -46,7 +50,6 @@ function App() {
     )
   }
 
-  // ── Connected + role detected ───────────────────────────
   return (
     <Layout>
       <div style={{ textAlign: 'center', marginTop: '80px' }}>
@@ -66,6 +69,37 @@ function App() {
       </div>
     </Layout>
   )
+}
+
+/**
+ * Dashboard placeholder — gated behind company_admin role.
+ */
+function DashboardPage() {
+  return (
+    <Layout>
+      <div style={{ textAlign: 'center', marginTop: '80px' }}>
+        <h1>Company Dashboard</h1>
+        <p style={{ color: 'var(--text, #6b6375)' }}>
+          Dashboard coming soon in the next PR.
+        </p>
+      </div>
+    </Layout>
+  )
+}
+
+function App() {
+  return useRoutes([
+    { path: '/', element: <HomePage /> },
+    {
+      path: '/dashboard',
+      element: (
+        <ProtectedRoute allowedRoles={['company_admin']}>
+          <DashboardPage />
+        </ProtectedRoute>
+      ),
+    },
+    { path: '*', element: <Navigate to="/" replace /> },
+  ])
 }
 
 export default App
