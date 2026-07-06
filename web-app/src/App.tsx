@@ -1,6 +1,7 @@
 import { useRoutes, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { CompanyDashboard } from './views/CompanyDashboard'
 import { useWalletConnection } from './hooks/useWalletConnection'
 import { useUserRole } from './hooks/useUserRole'
 
@@ -71,22 +72,6 @@ function HomePage() {
   )
 }
 
-/**
- * Dashboard placeholder — gated behind company_admin role.
- */
-function DashboardPage() {
-  return (
-    <Layout>
-      <div style={{ textAlign: 'center', marginTop: '80px' }}>
-        <h1>Company Dashboard</h1>
-        <p style={{ color: 'var(--text, #6b6375)' }}>
-          Dashboard coming soon in the next PR.
-        </p>
-      </div>
-    </Layout>
-  )
-}
-
 function App() {
   return useRoutes([
     { path: '/', element: <HomePage /> },
@@ -94,7 +79,7 @@ function App() {
       path: '/dashboard',
       element: (
         <ProtectedRoute allowedRoles={['company_admin']}>
-          <DashboardPage />
+          <CompanyDashboard />
         </ProtectedRoute>
       ),
     },
