@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { NavLink } from 'react-router-dom'
 import { ConnectButton } from './ConnectButton'
 import { NetworkBadge } from './NetworkBadge'
 import { useUserRole } from '../hooks/useUserRole'
@@ -88,18 +89,42 @@ export function Layout({ children }: LayoutProps) {
           </span>
 
           {role === 'admin' && (
-            <a href="/register" style={navItemStyle}>
+            <NavLink
+              to="/register"
+              style={({ isActive }) => ({
+                ...navItemStyle,
+                color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+                borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+                fontWeight: isActive ? 600 : 400,
+              })}
+            >
               Register Company
-            </a>
+            </NavLink>
           )}
 
-          <a href="/dashboard" style={navItemStyle}>
+          <NavLink
+            to="/dashboard"
+            style={({ isActive }) => ({
+              ...navItemStyle,
+              color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+              borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+              fontWeight: isActive ? 600 : 400,
+            })}
+          >
             Dashboard
-          </a>
+          </NavLink>
 
-          <a href="/portfolio" style={navItemStyle}>
+          <NavLink
+            to="/portfolio"
+            style={({ isActive }) => ({
+              ...navItemStyle,
+              color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+              borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+              fontWeight: isActive ? 600 : 400,
+            })}
+          >
             My Portfolio
-          </a>
+          </NavLink>
         </nav>
 
         <main style={contentStyle}>{children}</main>

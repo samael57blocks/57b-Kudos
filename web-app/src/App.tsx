@@ -1,12 +1,19 @@
+import { useRoutes, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { ProtectedRoute } from './components/ProtectedRoute'
+import { CompanyDashboard } from './views/CompanyDashboard'
 import { useWalletConnection } from './hooks/useWalletConnection'
 import { useUserRole } from './hooks/useUserRole'
 
-function App() {
+/**
+ * Home page — shows contextual content based on wallet connection and role.
+ * Mirrors the pre-routing App.tsx behavior: welcome, wrong-network, loading,
+ * or role-specific greeting.
+ */
+function HomePage() {
   const { isConnected, isCorrectNetwork, address } = useWalletConnection()
   const { role, isLoading: isRoleLoading } = useUserRole()
 
-  // ── Not connected ────────────────────────────────────────
   if (!isConnected) {
     return (
       <Layout>
@@ -21,7 +28,6 @@ function App() {
     )
   }
 
-  // ── Wrong network ────────────────────────────────────────
   if (!isCorrectNetwork) {
     return (
       <Layout>
@@ -35,7 +41,6 @@ function App() {
     )
   }
 
-  // ── Connected + loading role ─────────────────────────────
   if (isRoleLoading) {
     return (
       <Layout>
@@ -46,7 +51,6 @@ function App() {
     )
   }
 
-  // ── Connected + role detected ───────────────────────────
   return (
     <Layout>
       <div style={{ textAlign: 'center', marginTop: '80px' }}>
@@ -66,6 +70,21 @@ function App() {
       </div>
     </Layout>
   )
+}
+
+function App() {
+  return useRoutes([
+    { path: '/', element: <HomePage /> },
+    {
+      path: '/dashboard',
+      element: (
+        <ProtectedRoute allowedRoles={['company_admin']}>
+          <CompanyDashboard />
+        </ProtectedRoute>
+      ),
+    },
+    { path: '*', element: <Navigate to="/" replace /> },
+  ])
 }
 
 export default App
