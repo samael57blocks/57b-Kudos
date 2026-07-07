@@ -1,6 +1,7 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useMemo } from 'react'
 import { useTokenMetadata } from '../hooks/useTokenMetadata'
 import { RecognitionBadge } from './RecognitionBadge'
+import { getContractAddresses } from '../config/contracts'
 import type { EmployeeNFTData } from '../hooks/useEmployeeNFTs'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -72,6 +73,13 @@ const fieldValueStyle: React.CSSProperties = {
   textAlign: 'right',
 }
 
+const linkStyle: React.CSSProperties = {
+  color: 'var(--accent, #6366f1)',
+  textDecoration: 'none',
+  fontWeight: 600,
+  fontSize: '14px',
+}
+
 const loadingStyle: React.CSSProperties = {
   textAlign: 'center',
   padding: '40px',
@@ -91,6 +99,17 @@ export function NFTDetail({ nft, isOpen, onClose }: NFTDetailProps) {
   const { data: metadata, isLoading: metaLoading } = useTokenMetadata(
     nft?.tokenURI,
   )
+
+  const explorerUrl = useMemo(() => {
+    if (!nft) return undefined
+
+    const baseUrl =
+      import.meta.env.VITE_BLOCK_EXPLORER_URL ?? 'https://etherscan.io'
+    const contracts = getContractAddresses()
+    if (!contracts) return undefined
+
+    return `${baseUrl}/nft/${contracts.nft57b}/${nft.tokenId.toString()}`
+  }, [nft])
 
   // Close on Escape
   const handleKeyDown = useCallback(
@@ -195,6 +214,23 @@ export function NFTDetail({ nft, isOpen, onClose }: NFTDetailProps) {
             <span style={fieldLabelStyle}>Token ID</span>
             <span style={fieldValueStyle}>{nft.tokenId.toString()}</span>
           </div>
+
+          {explorerUrl && (
+            <div style={{ ...fieldRowStyle, borderBottom: 'none' }}>
+              <span style={fieldLabelStyle}>Explorer</span>
+              <span style={fieldValueStyle}>
+                <a
+                  href={explorerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={linkStyle}
+                  data-testid="explorer-link"
+                >
+                  View on Etherscan ↗
+                </a>
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
