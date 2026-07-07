@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { CompanyDashboard } from './views/CompanyDashboard'
 import { EmployeePortfolio } from './views/EmployeePortfolio'
+import { RegistrationPage } from './views/RegistrationPage'
 import { useWalletConnection } from './hooks/useWalletConnection'
 import { useUserRole } from './hooks/useUserRole'
 
@@ -89,6 +90,14 @@ function App() {
       element: (
         <ProtectedRoute allowedRoles={['employee']}>
           <EmployeePortfolio />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: '/register',
+      element: (
+        <ProtectedRoute allowedRoles={['admin', 'visitor']}>
+          <RegistrationPage />
         </ProtectedRoute>
       ),
     },
