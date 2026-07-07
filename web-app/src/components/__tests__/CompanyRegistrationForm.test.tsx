@@ -7,15 +7,21 @@ import { CompanyRegistrationForm } from '../CompanyRegistrationForm'
 const mockRegisterCompany = vi.hoisted(() => vi.fn())
 const mockReset = vi.hoisted(() => vi.fn())
 const mockUseRegisterCompany = vi.hoisted(() => vi.fn())
+const mockUseAccount = vi.hoisted(() => vi.fn())
 
 vi.mock('../../hooks/useRegisterCompany', () => ({
   useRegisterCompany: mockUseRegisterCompany,
 }))
 
+vi.mock('wagmi', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('wagmi')>()
+  return { ...mod, useAccount: mockUseAccount }
+})
+
 // --- Fixtures ---
 
 const TX_HASH = '0xTxHash123' as `0x${string}`
-const VALID_ADDRESS = '0x1111111111111111111111111111111111111111' as `0x${string}`
+const CONNECTED_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as `0x${string}`
 
 // --- Helper ---
 
@@ -36,15 +42,23 @@ function renderForm() {
   return render(<CompanyRegistrationForm />)
 }
 
-function fillForm(overrides: { name?: string; wallet?: string } = {}) {
+function fillForm(overrides: { name?: string } = {}) {
   const name = overrides.name ?? 'Acme Corp'
-  const wallet = overrides.wallet ?? VALID_ADDRESS
 
   fireEvent.change(screen.getByLabelText('Company Name'), {
     target: { value: name },
   })
-  fireEvent.change(screen.getByLabelText('Admin Wallet Address'), {
-    target: { value: wallet },
+}
+
+/**
+ * Submit the form and wait for registerCompany to be called.
+ * This sets internal `submittedName` state, required before
+ * the success card can render on `step === 'success'`.
+ */
+async function submitForm() {
+  fireEvent.click(screen.getByRole('button', { name: /register company/i }))
+  await waitFor(() => {
+    expect(mockRegisterCompany).toHaveBeenCalled()
   })
 }
 
@@ -55,15 +69,15 @@ describe('CompanyRegistrationForm', () => {
     vi.clearAllMocks()
     setupHookState()
     mockRegisterCompany.mockResolvedValue(TX_HASH)
+    mockUseAccount.mockReturnValue({ address: CONNECTED_ADDRESS })
   })
 
   // ---- render ----
 
-  it('renders company name input, wallet input, and submit button', () => {
+  it('renders company name input and submit button', () => {
     renderForm()
 
     expect(screen.getByLabelText('Company Name')).toBeInTheDocument()
-    expect(screen.getByLabelText('Admin Wallet Address')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /register company/i }),
     ).toBeInTheDocument()
@@ -74,9 +88,6 @@ describe('CompanyRegistrationForm', () => {
   it('shows validation error for empty company name', async () => {
     renderForm()
 
-    fireEvent.change(screen.getByLabelText('Admin Wallet Address'), {
-      target: { value: VALID_ADDRESS },
-    })
     fireEvent.click(screen.getByRole('button', { name: /register company/i }))
 
     await waitFor(() => {
@@ -84,51 +95,12 @@ describe('CompanyRegistrationForm', () => {
         screen.getByText(/company name is required/i),
       ).toBeInTheDocument()
     })
-    expect(mockRegisterCompany).not.toHaveBeenCalled()
-  })
-
-  // ---- validation: invalid wallet ----
-
-  it('shows validation error for invalid wallet address format', async () => {
-    renderForm()
-
-    fireEvent.change(screen.getByLabelText('Company Name'), {
-      target: { value: 'Acme Corp' },
-    })
-    fireEvent.change(screen.getByLabelText('Admin Wallet Address'), {
-      target: { value: 'not-an-address' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /register company/i }))
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/invalid wallet address/i),
-      ).toBeInTheDocument()
-    })
-    expect(mockRegisterCompany).not.toHaveBeenCalled()
-  })
-
-  // ---- validation: both errors ----
-
-  it('shows validation error for both empty name and invalid wallet', async () => {
-    renderForm()
-
-    fireEvent.click(screen.getByRole('button', { name: /register company/i }))
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/company name is required/i),
-      ).toBeInTheDocument()
-    })
-    expect(
-      screen.getByText(/invalid wallet address/i),
-    ).toBeInTheDocument()
     expect(mockRegisterCompany).not.toHaveBeenCalled()
   })
 
   // ---- happy path ----
 
-  it('calls registerCompany with correct name and wallet on valid submit', async () => {
+  it('calls registerCompany with name and connected address on valid submit', async () => {
     renderForm()
     fillForm()
 
@@ -137,7 +109,7 @@ describe('CompanyRegistrationForm', () => {
     await waitFor(() => {
       expect(mockRegisterCompany).toHaveBeenCalledWith(
         'Acme Corp',
-        VALID_ADDRESS,
+        CONNECTED_ADDRESS,
       )
     })
   })
@@ -164,24 +136,46 @@ describe('CompanyRegistrationForm', () => {
     ).toBeDisabled()
   })
 
-  // ---- success ----
+  // ---- success card ----
 
-  it('shows success message when registration succeeds', () => {
-    setupHookState({ step: 'success', companyId: 1n })
-    renderForm()
+  it('shows success card with company details when registration succeeds', async () => {
+    const { rerender } = renderForm()
+    fillForm()
+    await submitForm()
 
-    expect(screen.getByText(/company registered/i)).toBeInTheDocument()
-  })
-
-  it('calls reset when step transitions to success', async () => {
-    const { rerender } = render(<CompanyRegistrationForm />)
-
+    // Transition to success
     setupHookState({ step: 'success', companyId: 1n })
     rerender(<CompanyRegistrationForm />)
 
-    await waitFor(() => {
-      expect(mockReset).toHaveBeenCalled()
-    })
+    // Card heading
+    expect(screen.getByText(/company registered/i)).toBeInTheDocument()
+    // Company name in the detail grid
+    expect(screen.getByText('Acme Corp')).toBeInTheDocument()
+    // Company ID
+    expect(screen.getByText('#1')).toBeInTheDocument()
+    // Admin wallet (truncated)
+    expect(screen.getByText('0xf39F…2266')).toBeInTheDocument()
+    // Register another button
+    expect(
+      screen.getByRole('button', { name: /register another company/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('calls reset when "Register another company" is clicked', async () => {
+    const { rerender } = renderForm()
+    fillForm()
+    await submitForm()
+
+    // Transition to success
+    setupHookState({ step: 'success', companyId: 1n })
+    rerender(<CompanyRegistrationForm />)
+
+    // Click "Register another company"
+    fireEvent.click(
+      screen.getByRole('button', { name: /register another company/i }),
+    )
+
+    expect(mockReset).toHaveBeenCalled()
   })
 
   // ---- error ----

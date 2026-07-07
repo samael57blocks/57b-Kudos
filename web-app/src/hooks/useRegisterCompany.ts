@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { getEventSelector } from 'viem'
 import { COMPANY_REGISTRY_ABI, getContractAddresses } from '../config/contracts'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,6 +42,7 @@ export function useRegisterCompany(): UseRegisterCompanyResult {
     isLoading: isConfirming,
     isSuccess: txSuccess,
     error: confirmError,
+    data: receipt,
   } = useWaitForTransactionReceipt({
     hash: txHashData,
   })
@@ -52,6 +54,23 @@ export function useRegisterCompany(): UseRegisterCompanyResult {
   const isRegisteringRef = useRef(false)
 
   // ── Effects: sync wagmi state to our step machine ──────────────────────────
+
+  // When tx receipt comes through → parse CompanyRegistered event for companyId
+  useEffect(() => {
+    if (!receipt || !txSuccess) return
+
+    const eventSignature = getEventSelector(
+      'CompanyRegistered(uint256,string,address)',
+    )
+
+    for (const log of receipt.logs) {
+      if (log.topics[0] === eventSignature && log.topics[1]) {
+        const id = BigInt(log.topics[1])
+        setCompanyId(id)
+        break
+      }
+    }
+  }, [receipt, txSuccess])
 
   // When tx receipt comes through → success
   useEffect(() => {
@@ -107,7 +126,7 @@ export function useRegisterCompany(): UseRegisterCompanyResult {
           functionName: 'registerCompany',
           args: [name, adminWallet],
         })
-
+        console.log('hash',hash)
         setTxHash(hash)
         return hash
       } catch (err) {

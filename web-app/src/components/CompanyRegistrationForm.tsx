@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react'
-import { isAddress } from 'viem'
+import { useState, useRef, type FormEvent } from 'react'
+import { useAccount } from 'wagmi'
 import { useRegisterCompany } from '../hooks/useRegisterCompany'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const formStyle: React.CSSProperties = {
+const cardStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '16px',
@@ -32,10 +32,6 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--text, #08060d)',
 }
 
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-}
-
 const buttonStyle: React.CSSProperties = {
   padding: '10px 20px',
   fontSize: '14px',
@@ -45,6 +41,13 @@ const buttonStyle: React.CSSProperties = {
   cursor: 'pointer',
   background: 'var(--accent, #aa3bff)',
   color: '#fff',
+}
+
+const outlineButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  background: 'transparent',
+  color: 'var(--accent, #aa3bff)',
+  border: '1px solid var(--accent, #aa3bff)',
 }
 
 const buttonDisabledStyle: React.CSSProperties = {
@@ -59,45 +62,120 @@ const errorStyle: React.CSSProperties = {
   marginTop: '2px',
 }
 
-const successStyle: React.CSSProperties = {
-  fontSize: '13px',
-  color: '#38a169',
-  fontWeight: 600,
-}
-
 const linkStyle: React.CSSProperties = {
   fontSize: '13px',
   color: 'var(--accent, #aa3bff)',
   textDecoration: 'underline',
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function formatAddress(address: `0x${string}`): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
+/**
+ * Success card displayed after a company is successfully registered.
+ */
+function SuccessCard({
+  companyName,
+  companyId,
+  adminAddress,
+  onRegisterAnother,
+}: {
+  companyName: string
+  companyId: bigint | undefined
+  adminAddress: `0x${string}`
+  onRegisterAnother: () => void
+}) {
+  return (
+    <div style={cardStyle} role="status">
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          background: '#e6f7e6',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 20,
+          color: '#38a169',
+        }}
+      >
+        ✓
+      </div>
+
+      <div>
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
+          Company Registered
+        </h3>
+        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
+          Your new company is ready on-chain
+        </p>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '120px 1fr',
+          gap: '8px 12px',
+          fontSize: '13px',
+          padding: '12px',
+          background: '#f9f9fb',
+          borderRadius: '6px',
+        }}
+      >
+        <span style={{ color: '#666' }}>Name</span>
+        <span style={{ fontWeight: 600 }}>{companyName}</span>
+
+        <span style={{ color: '#666' }}>Company ID</span>
+        <span style={{ fontWeight: 600 }}>
+          {companyId !== undefined ? `#${companyId.toString()}` : '—'}
+        </span>
+
+        <span style={{ color: '#666' }}>Admin</span>
+        <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+          {formatAddress(adminAddress)}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={onRegisterAnother}
+        style={outlineButtonStyle}
+      >
+        Register another company
+      </button>
+    </div>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 
 export function CompanyRegistrationForm() {
-  const { registerCompany, step, isConfirming, txHash, error, reset } =
+  const { registerCompany, step, txHash, companyId, error, reset } =
     useRegisterCompany()
+  const { address } = useAccount()
 
   // Form fields
   const [companyName, setCompanyName] = useState('')
-  const [adminWallet, setAdminWallet] = useState('')
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({})
 
-  // Track previous step for detecting transitions
+  // Store the name that was submitted so we can show it in the success card
+  const [submittedName, setSubmittedName] = useState<string | null>(null)
+
+  // Track previous step for detecting success transitions
   const prevStepRef = useRef(step)
 
-  // ── Reset form on success ────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (step === 'success' && prevStepRef.current !== 'success') {
-      setCompanyName('')
-      setAdminWallet('')
-      setValidationErrors({})
-      reset()
-    }
-    prevStepRef.current = step
-  }, [step, reset])
+  // ── Capture submitted name on success transition ──────────────────────────
+  if (step === 'success' && prevStepRef.current !== 'success') {
+    // name is already stored in submittedName from handleSubmit
+  }
+  prevStepRef.current = step
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -111,28 +189,31 @@ export function CompanyRegistrationForm() {
       errors.companyName = 'Company name is required'
     }
 
-    if (!isAddress(adminWallet)) {
-      errors.adminWallet = 'Invalid wallet address'
-    }
-
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors)
       return
     }
 
+    if (!address) return
+
     try {
-      await registerCompany(
-        companyName.trim(),
-        adminWallet as `0x${string}`,
-      )
+      setSubmittedName(companyName.trim())
+      await registerCompany(companyName.trim(), address)
     } catch {
       // Error handled by useRegisterCompany
     }
   }
 
+  const handleRegisterAnother = () => {
+    setSubmittedName(null)
+    setCompanyName('')
+    setValidationErrors({})
+    reset()
+  }
+
   // ── Derived state ────────────────────────────────────────────────────────
 
-  const isInFlight = step !== 'idle'
+  const isInFlight = step === 'confirming'
   const isFormDisabled = isInFlight
   const explorerUrl =
     txHash && import.meta.env.VITE_BLOCK_EXPLORER_URL
@@ -141,10 +222,23 @@ export function CompanyRegistrationForm() {
         ? `https://etherscan.io/tx/${txHash}`
         : undefined
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Render: success card ─────────────────────────────────────────────────
+
+  if (step === 'success' && submittedName && address) {
+    return (
+      <SuccessCard
+        companyName={submittedName}
+        companyId={companyId}
+        adminAddress={address}
+        onRegisterAnother={handleRegisterAnother}
+      />
+    )
+  }
+
+  // ── Render: form ─────────────────────────────────────────────────────────
 
   return (
-    <form onSubmit={handleSubmit} style={formStyle}>
+    <form onSubmit={handleSubmit} style={cardStyle}>
       <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
         Register Company
       </h3>
@@ -168,25 +262,6 @@ export function CompanyRegistrationForm() {
         )}
       </label>
 
-      {/* Admin Wallet Address */}
-      <label style={labelStyle}>
-        Admin Wallet Address
-        <input
-          type="text"
-          value={adminWallet}
-          onChange={(e) => setAdminWallet(e.target.value)}
-          placeholder="0x..."
-          disabled={isFormDisabled}
-          style={inputStyle}
-          aria-label="Admin Wallet Address"
-        />
-        {validationErrors.adminWallet && (
-          <span style={errorStyle} role="alert">
-            {validationErrors.adminWallet}
-          </span>
-        )}
-      </label>
-
       {/* Status messages */}
       {step === 'confirming' && txHash && explorerUrl && (
         <p style={linkStyle}>
@@ -200,10 +275,6 @@ export function CompanyRegistrationForm() {
             View on Etherscan
           </a>
         </p>
-      )}
-
-      {step === 'success' && (
-        <p style={successStyle}>Company registered!</p>
       )}
 
       {step === 'error' && error && (

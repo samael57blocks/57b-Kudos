@@ -46,7 +46,7 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     address: contracts?.nft57b,
     abi: NFT57B_ABI,
     functionName: 'DEFAULT_ADMIN_ROLE',
-    query: { enabled: !!contracts?.nft57b },
+    query: { enabled: !!contracts?.nft57b, staleTime: 30_000 },
   })
 
   const { data: isAdmin, isFetching: isAdminLoading } = useReadContract({
@@ -56,7 +56,7 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     args: defaultAdminRole
       ? [defaultAdminRole, address ?? '0x0']
       : undefined,
-    query: { enabled: !!defaultAdminRole && !!address && !!contracts?.nft57b },
+    query: { enabled: !!defaultAdminRole && !!address && !!contracts?.nft57b, staleTime: 30_000 },
   })
 
   // 2. Check if employee
@@ -65,7 +65,7 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     abi: COMPANY_REGISTRY_ABI,
     functionName: 'getEmployeeCompany',
     args: address ? [address] : undefined,
-    query: { enabled: !!address && !!contracts?.companyRegistry },
+    query: { enabled: !!address && !!contracts?.companyRegistry, staleTime: 30_000 },
   })
 
   useEffect(() => {
