@@ -15,6 +15,11 @@ vi.mock('../hooks/useUserRole', () => ({
   useUserRole: mockUseUserRole,
 }))
 
+// Mock the protected views so they don't need their own dep trees
+vi.mock('../views/EmployeePortfolio', () => ({
+  EmployeePortfolio: () => <div data-testid="employee-portfolio">Employee Portfolio</div>,
+}))
+
 function renderApp(initialEntries = ['/']) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
@@ -95,5 +100,61 @@ describe('App routing', () => {
     await waitFor(() => {
       expect(screen.getByText('Welcome to NFT57B')).toBeInTheDocument()
     })
+  })
+
+  it('allows employee to access /portfolio route', async () => {
+    mockUseWalletConnection.mockReturnValue({
+      address: '0xE' as `0x${string}`,
+      isConnected: true,
+      isConnecting: false,
+      isCorrectNetwork: true,
+      chainName: 'Hardhat Local',
+      targetNetwork: 'localhost',
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      switchToTargetNetwork: vi.fn(),
+      isSwitchingNetwork: false,
+    })
+    mockUseUserRole.mockReturnValue({
+      role: 'employee' as UserRole,
+      employeeCompanyId: 1,
+      isLoading: false,
+      error: null,
+    })
+
+    renderApp(['/portfolio'])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('employee-portfolio')).toBeInTheDocument()
+    })
+  })
+
+  it('redirects visitor away from /portfolio route', async () => {
+    mockUseWalletConnection.mockReturnValue({
+      address: '0xE' as `0x${string}`,
+      isConnected: true,
+      isConnecting: false,
+      isCorrectNetwork: true,
+      chainName: 'Hardhat Local',
+      targetNetwork: 'localhost',
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      switchToTargetNetwork: vi.fn(),
+      isSwitchingNetwork: false,
+    })
+    mockUseUserRole.mockReturnValue({
+      role: 'visitor' as UserRole,
+      employeeCompanyId: undefined,
+      isLoading: false,
+      error: null,
+    })
+
+    renderApp(['/portfolio'])
+
+    // Visitor should be redirected to / and see the visitor greeting
+    await waitFor(() => {
+      expect(screen.getByText('👋 Welcome')).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('employee-portfolio')).not.toBeInTheDocument()
   })
 })
