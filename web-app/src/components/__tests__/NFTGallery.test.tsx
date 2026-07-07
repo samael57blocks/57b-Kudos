@@ -3,19 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { NFTGallery } from '../NFTGallery'
 import type { EmployeeNFTData } from '../../hooks/useEmployeeNFTs'
 
-// --- Mock useTokenMetadata ---
-
-const mockResolveMetadata = vi.hoisted(() => vi.fn())
-// We mock the module at the bottom of imports; for useTokenMetadata we need
-// to mock it so cards that render useTokenMetadata don't fail.
-vi.mock('../../hooks/useTokenMetadata', () => ({
-  useTokenMetadata: vi.fn(() => ({
-    data: undefined,
-    isLoading: false,
-    error: null,
-  })),
-}))
-
 // --- Fixtures ---
 
 const MOCK_NFTS: EmployeeNFTData[] = [
