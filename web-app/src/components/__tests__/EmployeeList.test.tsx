@@ -6,9 +6,14 @@ import { EmployeeList } from '../EmployeeList'
 
 const mockRefresh = vi.hoisted(() => vi.fn())
 const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
+const mockUseMinterRole = vi.hoisted(() => vi.fn())
 
 vi.mock('../../hooks/useCompanyEmployees', () => ({
   useCompanyEmployees: mockUseCompanyEmployees,
+}))
+
+vi.mock('../../hooks/useMinterRole', () => ({
+  useMinterRole: mockUseMinterRole,
 }))
 
 // --- Fixtures ---
@@ -26,7 +31,7 @@ const MOCK_EMPLOYEES = [
   },
 ]
 
-// --- Helper ---
+// --- Helpers ---
 
 function setupEmployeeState(overrides: Record<string, unknown> = {}) {
   const defaults = {
@@ -36,6 +41,17 @@ function setupEmployeeState(overrides: Record<string, unknown> = {}) {
     refresh: mockRefresh,
   }
   mockUseCompanyEmployees.mockReturnValue({ ...defaults, ...overrides })
+}
+
+function setupMinterRoleState(overrides: Record<string, unknown> = {}) {
+  const defaults = {
+    isMinter: false,
+    isLoading: false,
+    grantMinter: vi.fn().mockResolvedValue(undefined),
+    revokeMinter: vi.fn().mockResolvedValue(undefined),
+    error: null,
+  }
+  mockUseMinterRole.mockReturnValue({ ...defaults, ...overrides })
 }
 
 function renderList() {
@@ -48,6 +64,7 @@ describe('EmployeeList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupEmployeeState()
+    setupMinterRoleState()
   })
 
   it('renders column headers', () => {
@@ -77,8 +94,8 @@ describe('EmployeeList', () => {
   it('renders employee data rows with truncated addresses', () => {
     renderList()
 
-    expect(screen.getByText('0x1111...1111')).toBeInTheDocument()
-    expect(screen.getByText('0x2222...2222')).toBeInTheDocument()
+    expect(screen.getByText('0x1111…1111')).toBeInTheDocument()
+    expect(screen.getByText('0x2222…2222')).toBeInTheDocument()
 
     expect(screen.getByText('2024-01-10')).toBeInTheDocument()
     expect(screen.getByText('2024-02-15')).toBeInTheDocument()
@@ -91,5 +108,57 @@ describe('EmployeeList', () => {
     fireEvent.click(refreshButton)
 
     expect(mockRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  // ── Minter Role column ─────────────────────────────────────────────────────
+
+  it('renders Minter Role column header', () => {
+    renderList()
+
+    expect(screen.getByText('Minter Role')).toBeInTheDocument()
+  })
+
+  it('shows Grant button for non-minter employee', () => {
+    setupMinterRoleState({ isMinter: false })
+    renderList()
+
+    // Both employees show "Grant" — verify at least one is rendered
+    const grantButtons = screen.getAllByRole('button', { name: /grant minter role to/i })
+    expect(grantButtons.length).toBeGreaterThanOrEqual(1)
+    expect(grantButtons[0]).toHaveTextContent('Grant')
+  })
+
+  it('shows Minter status for minter employee', () => {
+    setupMinterRoleState({ isMinter: true })
+    renderList()
+
+    // Both employees show "Minter" — verify at least one is rendered
+    const minterButtons = screen.getAllByRole('button', { name: /revoke minter role from/i })
+    expect(minterButtons.length).toBeGreaterThanOrEqual(1)
+    expect(minterButtons[0]).toHaveTextContent('Minter')
+  })
+
+  it('calls grantMinter when Grant is clicked', () => {
+    const grantMinter = vi.fn().mockResolvedValue(undefined)
+    setupMinterRoleState({ isMinter: false, grantMinter })
+    renderList()
+
+    // Click the first Grant button
+    const grantButtons = screen.getAllByRole('button', { name: /grant minter role to/i })
+    fireEvent.click(grantButtons[0])
+
+    expect(grantMinter).toHaveBeenCalledTimes(1)
+  })
+
+  it('calls revokeMinter when Revoke is clicked', () => {
+    const revokeMinter = vi.fn().mockResolvedValue(undefined)
+    setupMinterRoleState({ isMinter: true, revokeMinter })
+    renderList()
+
+    // Click the first Revoke button
+    const revokeButtons = screen.getAllByRole('button', { name: /revoke minter role from/i })
+    fireEvent.click(revokeButtons[0])
+
+    expect(revokeMinter).toHaveBeenCalledTimes(1)
   })
 })
