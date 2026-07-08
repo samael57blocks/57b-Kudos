@@ -63,12 +63,12 @@ describe('Layout NavLink', () => {
     expect(dashboardLink).toHaveAttribute('aria-current', 'page')
   })
 
-  it('does not show Register Company link for visitor role', () => {
+  it('does not show Company link for visitor role', () => {
     renderLayout('/')
-    expect(screen.queryByText('Register Company')).not.toBeInTheDocument()
+    expect(screen.queryByText('Company')).not.toBeInTheDocument()
   })
 
-  it('shows Register Company link for admin role', () => {
+  it('shows Company link for admin role', () => {
     mockUseUserRole.mockReturnValue({
       role: 'admin' as UserRole,
       employeeCompanyId: undefined,
@@ -76,6 +76,6 @@ describe('Layout NavLink', () => {
       error: null,
     })
     renderLayout('/')
-    expect(screen.getByText('Register Company')).toBeInTheDocument()
+    expect(screen.getByText('Company')).toBeInTheDocument()
   })
 })
