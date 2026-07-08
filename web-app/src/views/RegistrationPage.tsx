@@ -65,7 +65,7 @@ export function RegistrationPage() {
 
   const contracts = getContractAddresses()
 
-  const { data: companyInfo, isLoading: isCompanyInfoLoading } = useReadContract({
+  const { data: companyInfo } = useReadContract({
     address: contracts?.companyRegistry,
     abi: COMPANY_REGISTRY_ABI,
     functionName: 'getCompany',
