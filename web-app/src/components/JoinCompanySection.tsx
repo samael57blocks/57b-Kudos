@@ -1,5 +1,6 @@
 import { useCompanies } from '../hooks/useCompanies'
 import { useRegisterEmployee } from '../hooks/useRegisterEmployee'
+import { useEffect } from 'react'
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -67,10 +68,12 @@ const emptyStyle: React.CSSProperties = {
 
 interface JoinCompanySectionProps {
   employeeCompanyId?: number
+  onJoinSuccess?: () => void
 }
 
 export function JoinCompanySection({
   employeeCompanyId,
+  onJoinSuccess,
 }: JoinCompanySectionProps = {}) {
   const { companies, isLoading: companiesLoading } = useCompanies()
   const { registerEmployee, step, isConfirming, error, reset } =
@@ -86,6 +89,13 @@ export function JoinCompanySection({
 
   const isPending = step === 'confirming'
   const isSuccess = step === 'success'
+
+  // Notify parent when registration succeeds so it can refetch user role
+  useEffect(() => {
+    if (isSuccess && onJoinSuccess) {
+      onJoinSuccess()
+    }
+  }, [isSuccess, onJoinSuccess])
 
   if (companiesLoading) {
     return (

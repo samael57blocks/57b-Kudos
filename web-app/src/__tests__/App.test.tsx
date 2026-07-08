@@ -152,6 +152,7 @@ describe('App routing', () => {
       employeeCompanyId: undefined,
       isLoading: true,
       error: null,
+      refetchRole: vi.fn(),
     })
     renderApp(['/'])
     expect(screen.getByText('Loading your profile…')).toBeInTheDocument()

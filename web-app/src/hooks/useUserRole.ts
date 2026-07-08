@@ -1,5 +1,5 @@
 import { useReadContract, useAccount } from 'wagmi'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   NFT57B_ABI,
   COMPANY_REGISTRY_ABI,
@@ -16,6 +16,8 @@ export interface UserRoleResult {
   isLoading: boolean
   /** Error message, if any */
   error: string | null
+  /** Re-fetch role data from contracts (used after role-changing transactions) */
+  refetchRole: () => void
 }
 
 export interface UseUserRoleOptions {
@@ -49,7 +51,7 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     query: { enabled: !!contracts?.nft57b, staleTime: 30_000 },
   })
 
-  const { data: isAdmin, isFetching: isAdminLoading } = useReadContract({
+  const { data: isAdmin, isFetching: isAdminLoading, refetch: refetchAdmin } = useReadContract({
     address: contracts?.nft57b,
     abi: NFT57B_ABI,
     functionName: 'hasRole',
@@ -60,7 +62,7 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
   })
 
   // 2. Check if employee
-  const { data: empCompanyRaw, isFetching: isEmpLoading } = useReadContract({
+  const { data: empCompanyRaw, isFetching: isEmpLoading, refetch: refetchEmployee } = useReadContract({
     address: contracts?.companyRegistry,
     abi: COMPANY_REGISTRY_ABI,
     functionName: 'getEmployeeCompany',
@@ -97,6 +99,11 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     setError(null)
   }, [address, contracts, isAdmin, isAdminLoading, empCompanyRaw, isEmpLoading])
 
+  const refetchRole = useCallback(() => {
+    refetchAdmin?.()
+    refetchEmployee?.()
+  }, [refetchAdmin, refetchEmployee])
+
   // Apply companyAdmin override — promotes visitor → company_admin
   const effectiveRole =
     options?.companyAdmin && role === 'visitor' ? 'company_admin' : role
@@ -106,5 +113,6 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     employeeCompanyId,
     isLoading: isAdminLoading || isEmpLoading,
     error,
+    refetchRole,
   }
 }

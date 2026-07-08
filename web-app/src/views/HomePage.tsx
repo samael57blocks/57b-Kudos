@@ -70,7 +70,7 @@ const welcomeStyle: React.CSSProperties = {
 
 function HomePage() {
   const { isConnected, isCorrectNetwork, address } = useWalletConnection()
-  const { role, isLoading: isRoleLoading, employeeCompanyId } = useUserRole()
+  const { role, isLoading: isRoleLoading, employeeCompanyId, refetchRole } = useUserRole()
   const { companyId: adminCompanyId } = useCompanyId(
     role === 'admin' ? address : undefined,
   )
@@ -141,7 +141,7 @@ function HomePage() {
     return (
       <Layout>
         <div style={sectionStyle}>
-          <h1 style={{ marginBottom: '24px' }}>Company Overview</h1>
+          <h1 style={{ marginBottom: 50 }}>Company Overview</h1>
 
           {empLoading || nftLoading ? (
             <p style={{ color: 'var(--text, #6b6375)' }}>Loading metrics…</p>
@@ -240,7 +240,10 @@ function HomePage() {
           Available Companies
         </h2>
 
-        <JoinCompanySection employeeCompanyId={employeeCompanyId} />
+        <JoinCompanySection
+          employeeCompanyId={employeeCompanyId}
+          onJoinSuccess={refetchRole}
+        />
       </div>
     </Layout>
   )

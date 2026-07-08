@@ -76,6 +76,7 @@ function setupMocks(overrides: Record<string, unknown> = {}) {
     employeeCompanyId: undefined,
     isLoading: false,
     error: null,
+    refetchRole: vi.fn(),
   }
   const companyIdDefaults = {
     companyId: null,
