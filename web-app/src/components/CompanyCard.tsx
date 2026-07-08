@@ -11,8 +11,8 @@ const cardStyle: React.CSSProperties = {
 }
 
 const checkCircleStyle: React.CSSProperties = {
-  width: 40,
-  height: 40,
+  width: 30,
+  height: 30,
   borderRadius: '50%',
   background: '#e6f7e6',
   display: 'flex',
@@ -71,15 +71,11 @@ function formatAddress(address: `0x${string}`): string {
 export function CompanyCard({ companyName, companyId, adminAddress }: CompanyCardProps) {
   return (
     <div style={cardStyle} role="status">
-      <div style={checkCircleStyle}>✓</div>
-
-      <div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
-          Company Registered
+          Company ready on-chain
         </h3>
-        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
-          Your company is ready on-chain
-        </p>
+        <div style={checkCircleStyle}>✓</div>
       </div>
 
       <div style={detailsGridStyle}>

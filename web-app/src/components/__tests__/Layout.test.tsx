@@ -78,4 +78,16 @@ describe('Layout NavLink', () => {
     renderLayout('/')
     expect(screen.getByText('Company')).toBeInTheDocument()
   })
+
+  it('does not show Dashboard and My Portfolio for admin role', () => {
+    mockUseUserRole.mockReturnValue({
+      role: 'admin' as UserRole,
+      employeeCompanyId: undefined,
+      isLoading: false,
+      error: null,
+    })
+    renderLayout('/')
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument()
+    expect(screen.queryByText('My Portfolio')).not.toBeInTheDocument()
+  })
 })
