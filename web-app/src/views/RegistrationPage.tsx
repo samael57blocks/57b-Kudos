@@ -5,7 +5,6 @@ import { useCompanyId } from '../hooks/useCompanyId'
 import { Layout } from '../components/Layout'
 import { CompanyCard } from '../components/CompanyCard'
 import { EmployeeList } from '../components/EmployeeList'
-import { EmployeeRegistration } from '../components/EmployeeRegistration'
 import { RegisterCompanyDialog } from '../components/RegisterCompanyDialog'
 import { getContractAddresses, COMPANY_REGISTRY_ABI } from '../config/contracts'
 
@@ -164,7 +163,7 @@ export function RegistrationPage() {
       )
     }
 
-    // Populated state: company card + employee list + employee registration
+    // Populated state: company card + employee list
     return (
       <Layout>
         <div style={containerStyle}>
@@ -179,8 +178,6 @@ export function RegistrationPage() {
           />
 
           <EmployeeList companyId={companyId} />
-
-          <EmployeeRegistration />
         </div>
 
         <RegisterCompanyDialog
@@ -192,13 +189,15 @@ export function RegistrationPage() {
     )
   }
 
-  // ── Visitor (connected, no role): employee registration only ──────────────
+  // ── Visitor (connected, no role) ──────────────────────────────────────────
 
   return (
     <Layout>
       <div style={containerStyle}>
-        <h1 style={titleStyle}>Employee Registration</h1>
-        <EmployeeRegistration />
+        <h1 style={titleStyle}>Company</h1>
+        <div style={emptyStyle}>
+          <p>Connect as admin to manage companies</p>
+        </div>
       </div>
     </Layout>
   )

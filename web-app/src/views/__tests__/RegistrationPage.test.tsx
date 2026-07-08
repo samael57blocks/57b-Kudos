@@ -58,12 +58,6 @@ vi.mock('../../components/RegisterCompanyDialog', () => ({
   ),
 }))
 
-vi.mock('../../components/EmployeeRegistration', () => ({
-  EmployeeRegistration: () => (
-    <div data-testid="employee-registration">Employee Registration</div>
-  ),
-}))
-
 // --- Helpers ---
 
 function setupMocks(overrides: Record<string, unknown> = {}) {
@@ -127,10 +121,6 @@ describe('RegistrationPage', () => {
     expect(
       screen.getByText('Connect your wallet to register'),
     ).toBeInTheDocument()
-
-    expect(
-      screen.queryByTestId('employee-registration'),
-    ).not.toBeInTheDocument()
   })
 
   // ── Admin: empty state ────────────────────────────────────────────────────
@@ -199,9 +189,6 @@ describe('RegistrationPage', () => {
     expect(screen.getByText('Company')).toBeInTheDocument()
     expect(screen.getByTestId('company-card')).toBeInTheDocument()
     expect(screen.getByTestId('employee-list')).toBeInTheDocument()
-    expect(
-      screen.getByTestId('employee-registration'),
-    ).toBeInTheDocument()
 
     expect(
       screen.queryByText('No company registered yet'),
@@ -210,15 +197,13 @@ describe('RegistrationPage', () => {
 
   // ── Visitor role ──────────────────────────────────────────────────────────
 
-  it('renders only employee registration for visitor role', () => {
+  it('shows connect as admin message for visitor role', () => {
     setupMocks({ role: { role: 'visitor' } })
     renderPage()
 
+    expect(screen.getByText('Company')).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: /employee registration/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByTestId('employee-registration'),
+      screen.getByText('Connect as admin to manage companies'),
     ).toBeInTheDocument()
     expect(
       screen.queryByTestId('company-card'),
@@ -239,9 +224,6 @@ describe('RegistrationPage', () => {
     expect(
       screen.getByText('You are already registered to a company'),
     ).toBeInTheDocument()
-    expect(
-      screen.queryByTestId('employee-registration'),
-    ).not.toBeInTheDocument()
     expect(
       screen.queryByTestId('company-card'),
     ).not.toBeInTheDocument()
