@@ -64,7 +64,7 @@ interface LayoutProps {
  * Main application layout with header, sidebar navigation, and content area.
  *
  * Navigation items are conditionally shown based on the connected wallet's role:
- * - Admin sees: Company Registration
+ * - Admin sees: Company
  * - Company admin sees: Dashboard
  * - Employee sees: Portfolio
  * - Visitor sees: nothing extra
@@ -84,47 +84,58 @@ export function Layout({ children }: LayoutProps) {
 
       <div style={mainAreaStyle}>
         <nav style={sidebarStyle}>
-          <span style={{ ...navItemStyle, cursor: 'default', fontWeight: 600 }}>
-            Navigation
-          </span>
+          {role === 'admin' ? (
+            <>
+              <NavLink
+                to="/"
+                style={({ isActive }) => ({
+                  ...navItemStyle,
+                  color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+                  borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+                  fontWeight: isActive ? 600 : 400,
+                })}
+              >
+                Overview
+              </NavLink>
+              <NavLink
+                to="/company"
+                style={({ isActive }) => ({
+                  ...navItemStyle,
+                  color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+                  borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+                  fontWeight: isActive ? 600 : 400,
+                })}
+              >
+                 Company
+              </NavLink>
+            </>
+          ) : (
+            <>
+              <NavLink
+                to="/dashboard"
+                style={({ isActive }) => ({
+                  ...navItemStyle,
+                  color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+                  borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+                  fontWeight: isActive ? 600 : 400,
+                })}
+              >
+                Dashboard
+              </NavLink>
 
-          {role === 'admin' && (
-            <NavLink
-              to="/register"
-              style={({ isActive }) => ({
-                ...navItemStyle,
-                color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
-                borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
-                fontWeight: isActive ? 600 : 400,
-              })}
-            >
-              Register Company
-            </NavLink>
+              <NavLink
+                to="/portfolio"
+                style={({ isActive }) => ({
+                  ...navItemStyle,
+                  color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+                  borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+                  fontWeight: isActive ? 600 : 400,
+                })}
+              >
+                My Portfolio
+              </NavLink>
+            </>
           )}
-
-          <NavLink
-            to="/dashboard"
-            style={({ isActive }) => ({
-              ...navItemStyle,
-              color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
-              borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
-              fontWeight: isActive ? 600 : 400,
-            })}
-          >
-            Dashboard
-          </NavLink>
-
-          <NavLink
-            to="/portfolio"
-            style={({ isActive }) => ({
-              ...navItemStyle,
-              color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
-              borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
-              fontWeight: isActive ? 600 : 400,
-            })}
-          >
-            My Portfolio
-          </NavLink>
         </nav>
 
         <main style={contentStyle}>{children}</main>

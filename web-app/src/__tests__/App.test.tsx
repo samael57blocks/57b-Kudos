@@ -6,6 +6,9 @@ import type { UserRole } from '../hooks/useUserRole'
 
 const mockUseWalletConnection = vi.hoisted(() => vi.fn())
 const mockUseUserRole = vi.hoisted(() => vi.fn())
+const mockUseCompanyId = vi.hoisted(() => vi.fn())
+const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
+const mockUseCompanyNFTs = vi.hoisted(() => vi.fn())
 
 vi.mock('../hooks/useWalletConnection', () => ({
   useWalletConnection: mockUseWalletConnection,
@@ -13,6 +16,18 @@ vi.mock('../hooks/useWalletConnection', () => ({
 
 vi.mock('../hooks/useUserRole', () => ({
   useUserRole: mockUseUserRole,
+}))
+
+vi.mock('../hooks/useCompanyId', () => ({
+  useCompanyId: mockUseCompanyId,
+}))
+
+vi.mock('../hooks/useCompanyEmployees', () => ({
+  useCompanyEmployees: mockUseCompanyEmployees,
+}))
+
+vi.mock('../hooks/useCompanyNFTs', () => ({
+  useCompanyNFTs: mockUseCompanyNFTs,
 }))
 
 // Mock the protected views so they don't need their own dep trees
@@ -45,6 +60,22 @@ describe('App routing', () => {
     mockUseUserRole.mockReturnValue({
       role: 'visitor' as UserRole,
       employeeCompanyId: undefined,
+      isLoading: false,
+      error: null,
+    })
+    mockUseCompanyId.mockReturnValue({
+      companyId: null,
+      isLoading: false,
+      error: null,
+    })
+    mockUseCompanyEmployees.mockReturnValue({
+      employees: [],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    mockUseCompanyNFTs.mockReturnValue({
+      nfts: [],
       isLoading: false,
       error: null,
     })
