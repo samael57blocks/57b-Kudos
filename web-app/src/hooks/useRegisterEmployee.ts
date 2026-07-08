@@ -100,6 +100,7 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
           abi: COMPANY_REGISTRY_ABI,
           functionName: 'registerEmployee',
           args: [companyId],
+          gas: 300_000n,
         })
 
         setTxHash(hash)

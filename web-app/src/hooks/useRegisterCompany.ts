@@ -125,6 +125,7 @@ export function useRegisterCompany(): UseRegisterCompanyResult {
           abi: COMPANY_REGISTRY_ABI,
           functionName: 'registerCompany',
           args: [name, adminWallet],
+          gas: 500_000n,
         })
         console.log('hash',hash)
         setTxHash(hash)
