@@ -64,7 +64,7 @@ interface LayoutProps {
  * Main application layout with header, sidebar navigation, and content area.
  *
  * Navigation items are conditionally shown based on the connected wallet's role:
- * - Admin sees: Company Registration
+ * - Admin sees: Company
  * - Company admin sees: Dashboard
  * - Employee sees: Portfolio
  * - Visitor sees: nothing extra
@@ -98,7 +98,7 @@ export function Layout({ children }: LayoutProps) {
                 fontWeight: isActive ? 600 : 400,
               })}
             >
-              Register Company
+               Company
             </NavLink>
           )}
 

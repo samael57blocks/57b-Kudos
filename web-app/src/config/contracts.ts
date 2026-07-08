@@ -10,6 +10,7 @@ export const SEPOLIA_CHAIN_ID = 11_155_111
 export interface ContractAddresses {
   nft57b: `0x${string}`
   companyRegistry: `0x${string}`
+  recognitionToken?: `0x${string}`
 }
 
 /**
@@ -22,8 +23,15 @@ export function getContractAddresses(): ContractAddresses | null {
   const envRegistry = import.meta.env
     .VITE_COMPANY_REGISTRY_ADDRESS as `0x${string}` | undefined
 
+  const envRecognitionToken = import.meta.env
+    .VITE_RECOGNITION_TOKEN_ADDRESS as `0x${string}` | undefined
+
   if (envNFT && envRegistry) {
-    return { nft57b: envNFT, companyRegistry: envRegistry }
+    return {
+      nft57b: envNFT,
+      companyRegistry: envRegistry,
+      ...(envRecognitionToken ? { recognitionToken: envRecognitionToken } : {}),
+    }
   }
 
   // No addresses configured yet — user needs to deploy contracts first
@@ -61,4 +69,11 @@ export const COMPANY_REGISTRY_ABI = parseAbi([
   'event CompanyRegistered(uint256 indexed companyId, string name, address indexed admin)',
   'event EmployeeRegistered(uint256 indexed companyId, address indexed employee)',
   'event Recognized(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee)',
+])
+
+export const RECOGNITION_TOKEN_ABI = parseAbi([
+  'function hasRole(bytes32 role, address account) external view returns (bool)',
+  'function grantRole(bytes32 role, address account) external',
+  'function revokeRole(bytes32 role, address account) external',
+  'function MINTER_ROLE() external pure returns (bytes32)',
 ])
