@@ -65,7 +65,13 @@ const emptyStyle: React.CSSProperties = {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
-export function JoinCompanySection() {
+interface JoinCompanySectionProps {
+  employeeCompanyId?: number
+}
+
+export function JoinCompanySection({
+  employeeCompanyId,
+}: JoinCompanySectionProps = {}) {
   const { companies, isLoading: companiesLoading } = useCompanies()
   const { registerEmployee, step, isConfirming, error, reset } =
     useRegisterEmployee()
@@ -77,6 +83,9 @@ export function JoinCompanySection() {
       // error is captured by the hook
     }
   }
+
+  const isPending = step === 'confirming'
+  const isSuccess = step === 'success'
 
   if (companiesLoading) {
     return (
@@ -92,40 +101,49 @@ export function JoinCompanySection() {
 
   return (
     <div>
-      {companies.map((company) => (
-        <div key={company.id.toString()} style={{ marginBottom: '12px' }}>
-          <div style={cardStyle}>
-            <div>
-              <h3 style={companyNameStyle}>{company.name}</h3>
-              <p style={adminStyle}>
-                Admin: {company.admin.slice(0, 6)}...{company.admin.slice(-4)}
-              </p>
+      {companies.map((company) => {
+        const alreadyJoined =
+          employeeCompanyId !== undefined &&
+          company.id === BigInt(employeeCompanyId)
+
+        return (
+          <div key={company.id.toString()} style={{ marginBottom: '12px' }}>
+            <div style={cardStyle}>
+              <div>
+                <h3 style={companyNameStyle}>{company.name}</h3>
+                <p style={adminStyle}>
+                  Admin: {company.admin.slice(0, 6)}...{company.admin.slice(-4)}
+                </p>
+              </div>
+
+              {alreadyJoined ? (
+                <span style={successTextStyle}>✓ Joined</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleJoin(company.id)}
+                  disabled={isPending}
+                  style={isPending ? joinButtonDisabledStyle : joinButtonStyle}
+                >
+                  {isPending ? 'Joining…' : 'Join Company'}
+                </button>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => handleJoin(company.id)}
-              disabled={isConfirming}
-              style={
-                isConfirming ? joinButtonDisabledStyle : joinButtonStyle
-              }
-            >
-              {isConfirming ? 'Joining…' : 'Join Company'}
-            </button>
+
+            {step === 'success' && !alreadyJoined && (
+              <p style={successTextStyle}>
+                ✓ Successfully joined {company.name}!
+              </p>
+            )}
+
+            {error && !alreadyJoined && (
+              <p style={errorTextStyle} role="alert">
+                {error.message}
+              </p>
+            )}
           </div>
-
-          {step === 'success' && (
-            <p style={successTextStyle}>
-              ✓ Successfully joined {company.name}!
-            </p>
-          )}
-
-          {error && (
-            <p style={errorTextStyle} role="alert">
-              {error.message}
-            </p>
-          )}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

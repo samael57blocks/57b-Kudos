@@ -240,7 +240,7 @@ function HomePage() {
           Available Companies
         </h2>
 
-        <JoinCompanySection />
+        <JoinCompanySection employeeCompanyId={employeeCompanyId} />
       </div>
     </Layout>
   )
