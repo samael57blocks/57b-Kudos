@@ -9,6 +9,21 @@ const mockUseUserRole = vi.hoisted(() => vi.fn())
 const mockUseCompanyId = vi.hoisted(() => vi.fn())
 const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
 const mockUseCompanyNFTs = vi.hoisted(() => vi.fn())
+const mockUseReadContract = vi.hoisted(() => vi.fn())
+const mockUseWriteContract = vi.hoisted(() => vi.fn())
+const mockUseWaitForTx = vi.hoisted(() => vi.fn())
+const mockUsePublicClient = vi.hoisted(() => vi.fn())
+
+vi.mock('wagmi', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...(typeof actual === 'object' && actual !== null ? actual : {}),
+    useReadContract: mockUseReadContract,
+    useWriteContract: mockUseWriteContract,
+    useWaitForTransactionReceipt: mockUseWaitForTx,
+    usePublicClient: mockUsePublicClient,
+  }
+})
 
 vi.mock('../hooks/useWalletConnection', () => ({
   useWalletConnection: mockUseWalletConnection,
@@ -79,6 +94,22 @@ describe('App routing', () => {
       isLoading: false,
       error: null,
     })
+    mockUseReadContract.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: undefined,
+    })
+    mockUseWriteContract.mockReturnValue({
+      writeContractAsync: vi.fn(),
+      data: undefined,
+      error: undefined,
+    })
+    mockUseWaitForTx.mockReturnValue({
+      isLoading: false,
+      isSuccess: false,
+      error: undefined,
+    })
+    mockUsePublicClient.mockReturnValue(undefined)
   })
 
   it('renders welcome message at / when not connected', () => {
@@ -182,9 +213,12 @@ describe('App routing', () => {
 
     renderApp(['/portfolio'])
 
-    // Visitor should be redirected to / and see the visitor greeting
+    // Visitor should be redirected to / and see the visitor homepage
     await waitFor(() => {
-      expect(screen.getByText('👋 Welcome')).toBeInTheDocument()
+      expect(screen.getByText('Welcome')).toBeInTheDocument()
+      expect(
+        screen.getByText('Available Companies'),
+      ).toBeInTheDocument()
     })
     expect(screen.queryByTestId('employee-portfolio')).not.toBeInTheDocument()
   })

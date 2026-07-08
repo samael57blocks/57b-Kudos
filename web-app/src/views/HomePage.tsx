@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom'
+import { useReadContract } from 'wagmi'
 import { Layout } from '../components/Layout'
+import { JoinCompanySection } from '../components/JoinCompanySection'
 import { useWalletConnection } from '../hooks/useWalletConnection'
 import { useUserRole } from '../hooks/useUserRole'
 import { useCompanyId } from '../hooks/useCompanyId'
 import { useCompanyEmployees } from '../hooks/useCompanyEmployees'
 import { useCompanyNFTs } from '../hooks/useCompanyNFTs'
+import {
+  COMPANY_REGISTRY_ABI,
+  getContractAddresses,
+} from '../config/contracts'
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -55,14 +61,42 @@ const linkStyle: React.CSSProperties = {
   fontSize: '14px',
 }
 
+const welcomeStyle: React.CSSProperties = {
+  maxWidth: '480px',
+  marginBottom: '32px',
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 function HomePage() {
   const { isConnected, isCorrectNetwork, address } = useWalletConnection()
-  const { role, isLoading: isRoleLoading } = useUserRole()
-  const { companyId } = useCompanyId(address)
+  const { role, isLoading: isRoleLoading, employeeCompanyId } = useUserRole()
+  const { companyId: adminCompanyId } = useCompanyId(
+    role === 'admin' ? address : undefined,
+  )
+
+  // Admin uses their own company ID; employee uses the one from userRole
+  const companyId =
+    role === 'admin'
+      ? adminCompanyId
+      : role === 'employee' && employeeCompanyId !== undefined
+        ? BigInt(employeeCompanyId)
+        : null
+
   const { employees, isLoading: empLoading } = useCompanyEmployees(companyId)
   const { nfts, isLoading: nftLoading } = useCompanyNFTs(companyId)
+
+  // Company name resolution
+  const contracts = getContractAddresses()
+  const { data: companyInfo } = useReadContract({
+    address: contracts?.companyRegistry,
+    abi: COMPANY_REGISTRY_ABI,
+    functionName: 'getCompany',
+    args: companyId !== null ? [companyId] : undefined,
+    query: {
+      enabled: !!contracts?.companyRegistry && companyId !== null,
+    },
+  })
 
   if (!isConnected) {
     return (
@@ -107,7 +141,7 @@ function HomePage() {
     return (
       <Layout>
         <div style={sectionStyle}>
-          <h1 style={{ marginBottom: 50 }}>Company Overview</h1>
+          <h1 style={{ marginBottom: '24px' }}>Company Overview</h1>
 
           {empLoading || nftLoading ? (
             <p style={{ color: 'var(--text, #6b6375)' }}>Loading metrics…</p>
@@ -152,24 +186,61 @@ function HomePage() {
     )
   }
 
-  // ── Employee + Visitor ──
+  // ── Employee: company overview ──
+
+  if (role === 'employee') {
+    return (
+      <Layout>
+        <div style={sectionStyle}>
+          <h1 style={{ marginBottom: '24px' }}>
+            {companyInfo?.name ?? 'Your Company'}
+          </h1>
+
+          <p style={{ color: 'var(--text, #6b6375)', marginBottom: '24px', fontSize: '14px' }}>
+            {address?.slice(0, 6)}...{address?.slice(-4)}
+          </p>
+
+          {empLoading || nftLoading ? (
+            <p style={{ color: 'var(--text, #6b6375)' }}>Loading metrics…</p>
+          ) : (
+            <>
+              <div style={cardRowStyle}>
+                <div style={cardStyle}>
+                  <p style={statLabelStyle}>Coworkers</p>
+                  <p style={statNumberStyle}>{employees.length}</p>
+                </div>
+                <div style={cardStyle}>
+                  <p style={statLabelStyle}>Kudos Minted</p>
+                  <p style={statNumberStyle}>{nfts.length}</p>
+                </div>
+              </div>
+
+              <Link to="/portfolio" style={linkStyle}>
+                View My Portfolio →
+              </Link>
+            </>
+          )}
+        </div>
+      </Layout>
+    )
+  }
+
+  // ── Visitor: join a company ──
 
   return (
     <Layout>
-      <div style={{ textAlign: 'center', marginTop: '80px' }}>
-        <h1>
-          {role === 'employee' && '🎉 Employee Portfolio'}
-          {role === 'visitor' && '👋 Welcome'}
-        </h1>
-        <p style={{ color: 'var(--text, #6b6375)', fontSize: '14px' }}>
-          {address?.slice(0, 6)}...{address?.slice(-4)}
+      <div style={sectionStyle}>
+        <h1 style={{ marginBottom: '24px' }}>Welcome</h1>
+        <p style={{ color: 'var(--text, #6b6375)', ...welcomeStyle }}>
+          You are not yet registered to any company. Join one below to start
+          receiving Kudos recognition NFTs.
         </p>
-        <p style={{ color: 'var(--text, #6b6375)', marginTop: '16px' }}>
-          {role === 'employee' &&
-            'Your NFTs will appear here once you receive recognition.'}
-          {role === 'visitor' &&
-            'Connect as an employee or register a company to get started.'}
-        </p>
+
+        <h2 style={{ fontSize: '18px', marginBottom: '16px' }}>
+          Available Companies
+        </h2>
+
+        <JoinCompanySection />
       </div>
     </Layout>
   )
