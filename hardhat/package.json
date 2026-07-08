@@ -14,7 +14,7 @@
     "seed:localhost": "hardhat run scripts/seed.ts --network localhost",
     "clean": "hardhat clean",
     "reset:localhost": "rm -rf ignition/deployments/chain-31337",
-    "redeploy:localhost": "pnpm reset:localhost && pnpm deploy:localhost && pnpm seed:localhost"
+    "redeploy:localhost": "pnpm reset:localhost && pnpm deploy:localhost"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox-viem": "^4.0.0",
