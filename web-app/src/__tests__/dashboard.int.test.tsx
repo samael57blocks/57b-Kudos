@@ -25,6 +25,9 @@ import type { UserRole } from '../hooks/useUserRole'
 
 const mockUseWalletConnection = vi.hoisted(() => vi.fn())
 const mockUseUserRole = vi.hoisted(() => vi.fn())
+const mockUseCompanyId = vi.hoisted(() => vi.fn())
+const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
+const mockUseCompanyNFTs = vi.hoisted(() => vi.fn())
 
 vi.mock('../hooks/useWalletConnection', () => ({
   useWalletConnection: mockUseWalletConnection,
@@ -32,6 +35,18 @@ vi.mock('../hooks/useWalletConnection', () => ({
 
 vi.mock('../hooks/useUserRole', () => ({
   useUserRole: mockUseUserRole,
+}))
+
+vi.mock('../hooks/useCompanyId', () => ({
+  useCompanyId: mockUseCompanyId,
+}))
+
+vi.mock('../hooks/useCompanyEmployees', () => ({
+  useCompanyEmployees: mockUseCompanyEmployees,
+}))
+
+vi.mock('../hooks/useCompanyNFTs', () => ({
+  useCompanyNFTs: mockUseCompanyNFTs,
 }))
 
 // Mock CompanyDashboard so it doesn't need Layout/useCompanyId dependencies
@@ -92,6 +107,22 @@ describe('Dashboard Routing Integration (S-001 / S-003)', () => {
       isSwitchingNetwork: false,
     })
     setRole('visitor')
+    mockUseCompanyId.mockReturnValue({
+      companyId: null,
+      isLoading: false,
+      error: null,
+    })
+    mockUseCompanyEmployees.mockReturnValue({
+      employees: [],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    mockUseCompanyNFTs.mockReturnValue({
+      nfts: [],
+      isLoading: false,
+      error: null,
+    })
   })
 
   // S-001: Admin with company_admin role CAN access /dashboard
