@@ -140,6 +140,7 @@ describe('useRegisterCompany', () => {
         abi: expect.any(Array),
         functionName: 'registerCompany',
         args: [COMPANY_NAME, ADMIN_WALLET],
+        gas: 500_000n,
       })
     })
   })

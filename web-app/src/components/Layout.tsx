@@ -109,6 +109,18 @@ export function Layout({ children }: LayoutProps) {
                  Company
               </NavLink>
             </>
+          ) : role === 'employee' ? (
+            <NavLink
+              to="/portfolio"
+              style={({ isActive }) => ({
+                ...navItemStyle,
+                color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+                borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+                fontWeight: isActive ? 600 : 400,
+              })}
+            >
+              My Portfolio
+            </NavLink>
           ) : (
             <>
               <NavLink

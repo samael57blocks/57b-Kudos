@@ -36,6 +36,7 @@ describe('useUserRole — companyAdmin promotion', () => {
       { data: undefined as `0x${string}` | undefined, isFetching: false }, // DEFAULT_ADMIN_ROLE
       { data: false, isFetching: false }, // hasRole
       { data: undefined, isFetching: false }, // getEmployeeCompany
+      { data: false, isFetching: false }, // isEmployee
     ])
     const { result } = renderHook(() => useUserRole({ companyAdmin: true }))
 
@@ -49,6 +50,7 @@ describe('useUserRole — companyAdmin promotion', () => {
       { data: '0x00' as `0x${string}`, isFetching: false }, // DEFAULT_ADMIN_ROLE
       { data: true, isFetching: false }, // hasRole = admin
       { data: undefined, isFetching: false }, // getEmployeeCompany
+      { data: false, isFetching: false }, // isEmployee
     ])
     const { result } = renderHook(() => useUserRole({ companyAdmin: true }))
 
@@ -62,6 +64,7 @@ describe('useUserRole — companyAdmin promotion', () => {
       { data: undefined as `0x${string}` | undefined, isFetching: false }, // DEFAULT_ADMIN_ROLE
       { data: false, isFetching: false }, // hasRole
       { data: 5n, isFetching: false }, // getEmployeeCompany = 5
+      { data: true, isFetching: false }, // isEmployee
     ])
     const { result } = renderHook(() => useUserRole({ companyAdmin: true }))
 
@@ -75,6 +78,7 @@ describe('useUserRole — companyAdmin promotion', () => {
       { data: undefined as `0x${string}` | undefined, isFetching: false },
       { data: false, isFetching: false },
       { data: undefined, isFetching: false },
+      { data: false, isFetching: false },
     ])
     const { result } = renderHook(() => useUserRole({ companyAdmin: false }))
 
@@ -88,6 +92,7 @@ describe('useUserRole — companyAdmin promotion', () => {
       { data: undefined as `0x${string}` | undefined, isFetching: false },
       { data: false, isFetching: false },
       { data: undefined, isFetching: false },
+      { data: false, isFetching: false },
     ])
     const { result } = renderHook(() => useUserRole())
 

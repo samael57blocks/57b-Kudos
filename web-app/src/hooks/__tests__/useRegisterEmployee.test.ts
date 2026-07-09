@@ -134,6 +134,7 @@ describe('useRegisterEmployee', () => {
         abi: expect.any(Array),
         functionName: 'registerEmployee',
         args: [COMPANY_ID],
+        gas: 300_000n,
       })
     })
   })

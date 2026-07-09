@@ -39,7 +39,7 @@ export function useCompanyNFTs(
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    if (!companyId || !publicClient) {
+    if (companyId === null || companyId === undefined || !publicClient) {
       setNfts([])
       setIsLoading(false)
       setError(null)

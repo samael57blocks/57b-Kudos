@@ -75,6 +75,21 @@ describe('useCompanyNFTs', () => {
     expect(result.current.nfts[1].tokenId).toBe(2n)
   })
 
+  it('fetches NFTs when companyId is 0n (first company)', async () => {
+    mockGetLogs.mockImplementation(async () => MOCK_EVENTS)
+
+    const { result } = renderHook(() => useCompanyNFTs(0n))
+
+    expect(result.current.isLoading).toBe(true)
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.error).toBeNull()
+    expect(result.current.nfts).toHaveLength(2)
+  })
+
   it('returns empty array when companyId is null', async () => {
     const { result } = renderHook(() => useCompanyNFTs(null))
 

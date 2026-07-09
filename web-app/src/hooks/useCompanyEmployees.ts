@@ -42,7 +42,7 @@ export function useCompanyEmployees(
   }, [])
 
   useEffect(() => {
-    if (!companyId || !publicClient) {
+    if (companyId === null || companyId === undefined || !publicClient) {
       setEmployees([])
       setIsLoading(false)
       setError(null)

@@ -28,6 +28,21 @@ const mockUseUserRole = vi.hoisted(() => vi.fn())
 const mockUseCompanyId = vi.hoisted(() => vi.fn())
 const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
 const mockUseCompanyNFTs = vi.hoisted(() => vi.fn())
+const mockUseReadContract = vi.hoisted(() => vi.fn())
+const mockUseWriteContract = vi.hoisted(() => vi.fn())
+const mockUseWaitForTx = vi.hoisted(() => vi.fn())
+const mockUsePublicClient = vi.hoisted(() => vi.fn())
+
+vi.mock('wagmi', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...(typeof actual === 'object' && actual !== null ? actual : {}),
+    useReadContract: mockUseReadContract,
+    useWriteContract: mockUseWriteContract,
+    useWaitForTransactionReceipt: mockUseWaitForTx,
+    usePublicClient: mockUsePublicClient,
+  }
+})
 
 vi.mock('../hooks/useWalletConnection', () => ({
   useWalletConnection: mockUseWalletConnection,
@@ -123,6 +138,22 @@ describe('Dashboard Routing Integration (S-001 / S-003)', () => {
       isLoading: false,
       error: null,
     })
+    mockUseReadContract.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: undefined,
+    })
+    mockUseWriteContract.mockReturnValue({
+      writeContractAsync: vi.fn(),
+      data: undefined,
+      error: undefined,
+    })
+    mockUseWaitForTx.mockReturnValue({
+      isLoading: false,
+      isSuccess: false,
+      error: undefined,
+    })
+    mockUsePublicClient.mockReturnValue(undefined)
   })
 
   // S-001: Admin with company_admin role CAN access /dashboard
@@ -143,8 +174,11 @@ describe('Dashboard Routing Integration (S-001 / S-003)', () => {
     renderApp(['/dashboard'])
 
     await waitFor(() => {
-      // Visitor redirected to / sees 👋 Welcome
-      expect(screen.getByText(/👋 Welcome/i)).toBeInTheDocument()
+      // Visitor redirected to / sees the join-company page
+      expect(screen.getByText('Welcome')).toBeInTheDocument()
+      expect(
+        screen.getByText('Available Companies'),
+      ).toBeInTheDocument()
     })
     expect(screen.queryByTestId('company-dashboard')).not.toBeInTheDocument()
   })
@@ -156,8 +190,8 @@ describe('Dashboard Routing Integration (S-001 / S-003)', () => {
     renderApp(['/dashboard'])
 
     await waitFor(() => {
-      // Employee redirected to / sees 🎉 Employee Portfolio
-      expect(screen.getByText(/🎉 Employee Portfolio/i)).toBeInTheDocument()
+      // Employee redirected to / sees their company overview
+      expect(screen.getByText('Your Company')).toBeInTheDocument()
     })
     expect(screen.queryByTestId('company-dashboard')).not.toBeInTheDocument()
   })

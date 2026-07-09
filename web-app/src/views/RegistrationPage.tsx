@@ -5,6 +5,7 @@ import { useCompanyId } from '../hooks/useCompanyId'
 import { Layout } from '../components/Layout'
 import { CompanyCard } from '../components/CompanyCard'
 import { EmployeeList } from '../components/EmployeeList'
+import { JoinCompanySection } from '../components/JoinCompanySection'
 import { RegisterCompanyDialog } from '../components/RegisterCompanyDialog'
 import { getContractAddresses, COMPANY_REGISTRY_ABI } from '../config/contracts'
 
@@ -195,9 +196,10 @@ export function RegistrationPage() {
     <Layout>
       <div style={containerStyle}>
         <h1 style={titleStyle}>Company</h1>
-        <div style={emptyStyle}>
-          <p>Connect as admin to manage companies</p>
-        </div>
+        <p style={{ color: 'var(--text, #6b6375)', fontSize: '14px', marginTop: '8px' }}>
+          Join an existing company below to start receiving Kudos.
+        </p>
+        <JoinCompanySection />
       </div>
     </Layout>
   )

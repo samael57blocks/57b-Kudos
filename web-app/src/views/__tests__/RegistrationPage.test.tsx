@@ -9,11 +9,17 @@ const mockUseAccount = vi.hoisted(() => vi.fn())
 const mockUseUserRole = vi.hoisted(() => vi.fn())
 const mockUseCompanyId = vi.hoisted(() => vi.fn())
 const mockUseReadContract = vi.hoisted(() => vi.fn())
+const mockUsePublicClient = vi.hoisted(() => vi.fn())
+const mockUseWriteContract = vi.hoisted(() => vi.fn())
+const mockUseWaitForTx = vi.hoisted(() => vi.fn())
 const mockGetContractAddresses = vi.hoisted(() => vi.fn())
 
 vi.mock('wagmi', () => ({
   useAccount: mockUseAccount,
   useReadContract: mockUseReadContract,
+  usePublicClient: mockUsePublicClient,
+  useWriteContract: mockUseWriteContract,
+  useWaitForTransactionReceipt: mockUseWaitForTx,
 }))
 
 vi.mock('../../hooks/useUserRole', () => ({
@@ -70,6 +76,7 @@ function setupMocks(overrides: Record<string, unknown> = {}) {
     employeeCompanyId: undefined,
     isLoading: false,
     error: null,
+    refetchRole: vi.fn(),
   }
   const companyIdDefaults = {
     companyId: null,
@@ -92,6 +99,17 @@ function setupMocks(overrides: Record<string, unknown> = {}) {
   mockUseReadContract.mockReturnValue({
     data: overrides.companyInfo ?? undefined,
     isLoading: false,
+  })
+  mockUsePublicClient.mockReturnValue(undefined)
+  mockUseWriteContract.mockReturnValue({
+    writeContractAsync: vi.fn(),
+    data: undefined,
+    error: undefined,
+  })
+  mockUseWaitForTx.mockReturnValue({
+    isLoading: false,
+    isSuccess: false,
+    error: undefined,
   })
   mockGetContractAddresses.mockReturnValue({
     nft57b: '0xNFT' as `0x${string}`,
@@ -197,13 +215,13 @@ describe('RegistrationPage', () => {
 
   // ── Visitor role ──────────────────────────────────────────────────────────
 
-  it('shows connect as admin message for visitor role', () => {
+  it('shows join company section for visitor role', () => {
     setupMocks({ role: { role: 'visitor' } })
     renderPage()
 
     expect(screen.getByText('Company')).toBeInTheDocument()
     expect(
-      screen.getByText('Connect as admin to manage companies'),
+      screen.getByText('Join an existing company below to start receiving Kudos.'),
     ).toBeInTheDocument()
     expect(
       screen.queryByTestId('company-card'),

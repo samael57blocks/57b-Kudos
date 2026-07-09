@@ -71,6 +71,21 @@ describe('useCompanyEmployees', () => {
     )
   })
 
+  it('fetches employees when companyId is 0n (first company)', async () => {
+    mockGetLogs.mockImplementation(async () => MOCK_EVENTS)
+
+    const { result } = renderHook(() => useCompanyEmployees(0n))
+
+    expect(result.current.isLoading).toBe(true)
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.error).toBeNull()
+    expect(result.current.employees).toHaveLength(2)
+  })
+
   it('returns empty array when companyId is null', async () => {
     const { result } = renderHook(() => useCompanyEmployees(null))
 
