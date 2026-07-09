@@ -64,6 +64,15 @@ vi.mock('../../components/RegisterCompanyDialog', () => ({
   ),
 }))
 
+vi.mock('../../components/JoinCompanySection', () => ({
+  JoinCompanySection: ({ onJoinSuccess }: { onJoinSuccess?: () => void }) => (
+    <div data-testid="join-section">
+      Join Section
+      {onJoinSuccess && <span data-testid="on-join-success-prop">present</span>}
+    </div>
+  ),
+}))
+
 // --- Helpers ---
 
 function setupMocks(overrides: Record<string, unknown> = {}) {
@@ -229,6 +238,13 @@ describe('RegistrationPage', () => {
     expect(
       screen.queryByTestId('employee-list'),
     ).not.toBeInTheDocument()
+  })
+
+  it('passes onJoinSuccess to JoinCompanySection for visitor role', () => {
+    setupMocks({ role: { role: 'visitor' } })
+    renderPage()
+
+    expect(screen.getByTestId('on-join-success-prop')).toBeInTheDocument()
   })
 
   // ── Employee role ─────────────────────────────────────────────────────────

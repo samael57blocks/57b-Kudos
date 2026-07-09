@@ -23,7 +23,10 @@ export function ProtectedRoute({
   children,
   effectiveRole,
 }: ProtectedRouteProps) {
-  const { role, isLoading } = useUserRole()
+  const options = allowedRoles.includes('company_admin')
+    ? { companyAdmin: true }
+    : undefined
+  const { role, isLoading } = useUserRole(options)
   const navigate = useNavigate()
   const resolvedRole = effectiveRole ?? role
   const shouldRedirect = !isLoading && !allowedRoles.includes(resolvedRole)

@@ -27,7 +27,7 @@ function App() {
     {
       path: '/company',
       element: (
-        <ProtectedRoute allowedRoles={['admin', 'visitor']}>
+        <ProtectedRoute allowedRoles={['admin', 'visitor', 'company_admin']}>
           <RegistrationPage />
         </ProtectedRoute>
       ),

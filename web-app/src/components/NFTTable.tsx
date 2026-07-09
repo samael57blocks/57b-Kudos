@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useCompanyNFTs } from '../hooks/useCompanyNFTs'
+import { useTokenMetadata } from '../hooks/useTokenMetadata'
+import type { NFTData } from '../hooks/useCompanyNFTs'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -92,6 +94,83 @@ function buildGatewayURL(uri: string): string {
   const cid = uri.replace('ipfs://', '')
   const gateway = import.meta.env.VITE_IPFS_GATEWAY ?? 'https://gateway.pinata.cloud'
   return `${gateway}/ipfs/${cid}`
+}
+
+// ── NFTTableRow sub-component ─────────────────────────────────────────────────
+
+/**
+ * Render a single NFT table row with IPFS metadata resolution.
+ *
+ * Extracted as a separate component so each row can independently call
+ * the `useTokenMetadata` hook (hooks cannot be called inside loops/map).
+ */
+function NFTTableRow({ nft }: { nft: NFTData }) {
+  const { data: metadata, isLoading, error } = useTokenMetadata(nft.tokenURI)
+
+  const isFallback = isLoading || error || !metadata
+
+  const resolvedValue = isFallback
+    ? nft.value
+    : extractAttribute(metadata, 'Value') ?? nft.value
+
+  const resolvedDate = isFallback
+    ? nft.date
+    : extractAttribute(metadata, 'Date') ?? nft.date
+
+  return (
+    <tr>
+      <td style={tdStyle}>#{nft.tokenId.toString()}</td>
+      <td style={tdStyle}>{truncateAddress(nft.employee)}</td>
+      <td style={tdStyle}>
+        {isLoading ? (
+          <div style={{ ...skeletonStyle, width: '60px' }} />
+        ) : (
+          resolvedValue || '—'
+        )}
+      </td>
+      <td style={tdStyle}>
+        {isLoading ? (
+          <div style={{ ...skeletonStyle, width: '80px' }} />
+        ) : (
+          resolvedDate || '—'
+        )}
+      </td>
+      <td style={tdStyle}>
+        {nft.tokenURI ? (
+          <a
+            href={buildGatewayURL(nft.tokenURI)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={linkStyle}
+          >
+            View
+          </a>
+        ) : (
+          <span style={{ color: '#ccc' }}>—</span>
+        )}
+      </td>
+    </tr>
+  )
+}
+
+/**
+ * Extract an attribute value by trait_type from IPFS metadata attributes array.
+ */
+function extractAttribute(
+  metadata: Record<string, unknown>,
+  traitType: string,
+): string | undefined {
+  const attributes = metadata.attributes
+  if (!Array.isArray(attributes)) return undefined
+  const attr = attributes.find(
+    (a: unknown) =>
+      typeof a === 'object' &&
+      a !== null &&
+      (a as Record<string, unknown>).trait_type === traitType,
+  )
+  if (!attr) return undefined
+  const val = (attr as Record<string, unknown>).value
+  return typeof val === 'string' ? val : undefined
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -208,26 +287,7 @@ export function NFTTable({ companyId }: NFTTableProps) {
           </thead>
           <tbody>
             {filteredNFTs.map((nft) => (
-              <tr key={nft.tokenId.toString()}>
-                <td style={tdStyle}>#{nft.tokenId.toString()}</td>
-                <td style={tdStyle}>{truncateAddress(nft.employee)}</td>
-                <td style={tdStyle}>{nft.value}</td>
-                <td style={tdStyle}>{nft.date}</td>
-                <td style={tdStyle}>
-                  {nft.tokenURI ? (
-                    <a
-                      href={buildGatewayURL(nft.tokenURI)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={linkStyle}
-                    >
-                      View
-                    </a>
-                  ) : (
-                    <span style={{ color: '#ccc' }}>—</span>
-                  )}
-                </td>
-              </tr>
+              <NFTTableRow key={nft.tokenId.toString()} nft={nft} />
             ))}
           </tbody>
         </table>

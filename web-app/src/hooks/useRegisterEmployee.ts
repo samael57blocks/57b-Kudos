@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { toast } from 'sonner'
 import { COMPANY_REGISTRY_ABI, getContractAddresses } from '../config/contracts'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -76,6 +77,18 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
       setStep('error')
     }
   }, [confirmError, step])
+
+  // ── Toasts ───────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (step === 'confirming') {
+      toast.loading('Joining company...')
+    } else if (step === 'success') {
+      toast.success('Joined!')
+    } else if (step === 'error') {
+      toast.error(error?.message ?? 'Join failed')
+    }
+  }, [step, error])
 
   // ── Register function ──────────────────────────────────────────────────────
 

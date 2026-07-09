@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { toast } from 'sonner'
 import { buildMetadata, type MetadataParams } from '../utils/metadata'
 import { uploadMetadata } from '../utils/ipfs'
 import { COMPANY_REGISTRY_ABI, getContractAddresses } from '../config/contracts'
@@ -90,6 +91,20 @@ export function useMintNFT(companyId: bigint): UseMintNFTResult {
       setStep('error')
     }
   }, [confirmError, step])
+
+  // ── Toasts ───────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (step === 'uploading') {
+      toast.loading('Uploading metadata...')
+    } else if (step === 'confirming') {
+      toast.loading('Minting NFT...')
+    } else if (step === 'success') {
+      toast.success('NFT minted!')
+    } else if (step === 'error') {
+      toast.error(error?.message ?? 'Mint failed')
+    }
+  }, [step, error])
 
   // ── Mint function ──────────────────────────────────────────────────────────
 
