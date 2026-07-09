@@ -62,8 +62,7 @@ const linkStyle: React.CSSProperties = {
 }
 
 const welcomeStyle: React.CSSProperties = {
-  maxWidth: '480px',
-  marginBottom: '32px',
+  marginBottom: 48,
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -230,7 +229,7 @@ function HomePage() {
   return (
     <Layout>
       <div style={sectionStyle}>
-        <h1 style={{ marginBottom: '24px' }}>Welcome</h1>
+        <h1 style={{ marginBottom: 48 }}>Welcome</h1>
         <p style={{ color: 'var(--text, #6b6375)', ...welcomeStyle }}>
           You are not yet registered to any company. Join one below to start
           receiving Kudos recognition NFTs.

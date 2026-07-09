@@ -70,6 +70,17 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     query: { enabled: !!address && !!contracts?.companyRegistry, staleTime: 30_000 },
   })
 
+  // Separate boolean check — getEmployeeCompany returns 0n for both
+  // "not registered" AND "registered to company 0", so we need an
+  // unambiguous is-this-address-an-employee query.
+  const { data: isEmp, isFetching: isEmpLoading2, refetch: refetchIsEmployee } = useReadContract({
+    address: contracts?.companyRegistry,
+    abi: COMPANY_REGISTRY_ABI,
+    functionName: 'isEmployee',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && !!contracts?.companyRegistry, staleTime: 30_000 },
+  })
+
   useEffect(() => {
     if (!address || !contracts) {
       setRole('visitor')
@@ -78,17 +89,17 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
       return
     }
 
-    if (isAdminLoading || isEmpLoading) return
+    if (isAdminLoading || isEmpLoading || isEmpLoading2) return
 
     if (isAdmin) {
       setRole('admin')
       return
     }
 
-    const empId = empCompanyRaw !== undefined ? Number(empCompanyRaw) : 0
-    if (empId > 0) {
+    if (isEmp) {
+      const companyId = empCompanyRaw !== undefined ? Number(empCompanyRaw) : 0
       setRole('employee')
-      setEmployeeCompanyId(empId)
+      setEmployeeCompanyId(companyId)
       return
     }
 
@@ -97,12 +108,13 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     setRole('visitor')
     setEmployeeCompanyId(undefined)
     setError(null)
-  }, [address, contracts, isAdmin, isAdminLoading, empCompanyRaw, isEmpLoading])
+  }, [address, contracts, isAdmin, isAdminLoading, empCompanyRaw, isEmpLoading, isEmp, isEmpLoading2])
 
   const refetchRole = useCallback(() => {
     refetchAdmin?.()
     refetchEmployee?.()
-  }, [refetchAdmin, refetchEmployee])
+    refetchIsEmployee?.()
+  }, [refetchAdmin, refetchEmployee, refetchIsEmployee])
 
   // Apply companyAdmin override — promotes visitor → company_admin
   const effectiveRole =
@@ -111,7 +123,7 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
   return {
     role: effectiveRole,
     employeeCompanyId,
-    isLoading: isAdminLoading || isEmpLoading,
+    isLoading: isAdminLoading || isEmpLoading || isEmpLoading2,
     error,
     refetchRole,
   }

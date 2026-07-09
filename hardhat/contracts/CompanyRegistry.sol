@@ -165,6 +165,13 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
         return stored - 1;
     }
 
+    /// @notice Check whether an address is registered as an employee
+    /// @param employee The address to check
+    /// @return true if the address is registered to any company
+    function isEmployee(address employee) external view returns (bool) {
+        return _employeeCompanies[employee] != 0;
+    }
+
     /// @notice Get company info by ID
     /// @param companyId The company ID
     /// @return Company struct with all fields
