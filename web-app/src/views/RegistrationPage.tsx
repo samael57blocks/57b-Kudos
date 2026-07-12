@@ -52,7 +52,7 @@ const loadingStyle: React.CSSProperties = {
 
 export function RegistrationPage() {
   const { address } = useAccount()
-  const { role } = useUserRole()
+  const { role, refetchRole } = useUserRole()
   const { companyId: hookCompanyId, isLoading: isCompanyIdLoading, error: companyIdError } =
     useCompanyId(address)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -199,7 +199,7 @@ export function RegistrationPage() {
         <p style={{ color: 'var(--text, #6b6375)', fontSize: '14px', marginTop: '8px' }}>
           Join an existing company below to start receiving Kudos.
         </p>
-        <JoinCompanySection />
+        <JoinCompanySection onJoinSuccess={() => refetchRole?.()} />
       </div>
     </Layout>
   )

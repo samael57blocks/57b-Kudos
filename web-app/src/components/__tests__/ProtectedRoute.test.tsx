@@ -66,6 +66,45 @@ describe('ProtectedRoute', () => {
     })
   })
 
+  it('passes companyAdmin:true to useUserRole when allowedRoles includes company_admin', () => {
+    mockUseUserRole.mockReturnValue({
+      role: 'company_admin' as UserRole,
+      employeeCompanyId: undefined,
+      isLoading: false,
+      error: null,
+    })
+    renderWithRouter(
+      <ProtectedRoute allowedRoles={['company_admin']}>
+        <div>Dashboard Content</div>
+      </ProtectedRoute>,
+      { initialEntries: ['/dashboard'] },
+    )
+    expect(mockUseUserRole).toHaveBeenCalledWith({ companyAdmin: true })
+  })
+
+  it('does NOT pass companyAdmin:true when allowedRoles excludes company_admin', () => {
+    // Clear call history to isolate this test's assertion
+    mockUseUserRole.mockClear()
+    mockUseUserRole.mockReturnValue({
+      role: 'employee' as UserRole,
+      employeeCompanyId: 5,
+      isLoading: false,
+      error: null,
+    })
+    renderWithRouter(
+      <ProtectedRoute allowedRoles={['employee', 'admin']}>
+        <div>Dashboard Content</div>
+      </ProtectedRoute>,
+      { initialEntries: ['/dashboard'] },
+    )
+    // After mount, the last call to useUserRole should NOT have companyAdmin
+    const calls = mockUseUserRole.mock.calls
+    expect(calls.length).toBeGreaterThanOrEqual(1)
+    for (const call of calls) {
+      expect(call[0]).toBeUndefined()
+    }
+  })
+
   it('redirects visitor role away from dashboard', async () => {
     renderWithRouter(
       <ProtectedRoute allowedRoles={['company_admin']}>

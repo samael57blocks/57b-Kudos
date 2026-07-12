@@ -5,9 +5,14 @@ import { NFTTable } from '../NFTTable'
 // --- Hoisted mocks ---
 
 const mockUseCompanyNFTs = vi.hoisted(() => vi.fn())
+const mockUseTokenMetadata = vi.hoisted(() => vi.fn())
 
 vi.mock('../../hooks/useCompanyNFTs', () => ({
   useCompanyNFTs: mockUseCompanyNFTs,
+}))
+
+vi.mock('../../hooks/useTokenMetadata', () => ({
+  useTokenMetadata: mockUseTokenMetadata,
 }))
 
 // --- Fixtures ---
@@ -38,6 +43,44 @@ const MOCK_NFTS = [
   },
 ]
 
+// --- Metadata fixtures ---
+
+const MOCK_METADATA: Record<string, unknown> = {
+  name: 'Employee Achievement',
+  description: 'Awarded for outstanding work',
+  attributes: [
+    { trait_type: 'Value', value: '1000' },
+    { trait_type: 'Date', value: '2024-01-15' },
+    { trait_type: 'Employee', value: 'John Doe' },
+  ],
+}
+
+const MOCK_METADATA_2: Record<string, unknown> = {
+  name: 'Employee Achievement',
+  description: 'Awarded for good work',
+  attributes: [
+    { trait_type: 'Value', value: '500' },
+    { trait_type: 'Date', value: '2024-02-20' },
+    { trait_type: 'Employee', value: 'Jane Smith' },
+  ],
+}
+
+const MOCK_METADATA_3: Record<string, unknown> = {
+  name: 'Employee Achievement',
+  description: 'Awarded for team work',
+  attributes: [
+    { trait_type: 'Value', value: '250' },
+    { trait_type: 'Date', value: '2024-03-10' },
+    { trait_type: 'Employee', value: 'Bob Wilson' },
+  ],
+}
+
+const METADATA_BY_URI: Record<string, Record<string, unknown>> = {
+  'ipfs://QmFirst': MOCK_METADATA,
+  'ipfs://QmSecond': MOCK_METADATA_2,
+  'ipfs://QmThird': MOCK_METADATA_3,
+}
+
 // --- Helper ---
 
 function setupNFTState(overrides: Record<string, unknown> = {}) {
@@ -47,6 +90,14 @@ function setupNFTState(overrides: Record<string, unknown> = {}) {
     error: null,
   }
   mockUseCompanyNFTs.mockReturnValue({ ...defaults, ...overrides })
+
+  // Default metadata mock: resolve per-URI
+  mockUseTokenMetadata.mockImplementation(
+    (uri: string | undefined) => {
+      const data = uri ? METADATA_BY_URI[uri] : undefined
+      return { data, isLoading: false, error: null }
+    },
+  )
 }
 
 function renderTable() {
@@ -123,6 +174,57 @@ describe('NFTTable', () => {
     // First NFT link should point to IPFS gateway
     expect(links[0]).toHaveAttribute('href', expect.stringContaining('QmFirst'))
     expect(links[1]).toHaveAttribute('href', expect.stringContaining('QmSecond'))
+  })
+
+  describe('metadata resolution', () => {
+    it('shows resolved value and date from IPFS metadata', () => {
+      renderTable()
+
+      // Values from metadata attributes (mocked)
+      expect(screen.getByText('1000')).toBeInTheDocument()
+      expect(screen.getByText('500')).toBeInTheDocument()
+      expect(screen.getByText('250')).toBeInTheDocument()
+
+      // Dates from metadata attributes (mocked)
+      expect(screen.getByText('2024-01-15')).toBeInTheDocument()
+      expect(screen.getByText('2024-02-20')).toBeInTheDocument()
+      expect(screen.getByText('2024-03-10')).toBeInTheDocument()
+    })
+
+    it('shows fallback — when metadata is loading', () => {
+      // Override: make metadata loading for all rows
+      mockUseTokenMetadata.mockReturnValue({
+        data: undefined,
+        isLoading: true,
+        error: null,
+      })
+
+      renderTable()
+
+      // Should show skeleton placeholders (loading animation divs)
+      // The fallback value should reference the on-chain value, but since
+      // we mock loading, NFTTableRow shows skeleton divs
+      expect(screen.getByText('#1')).toBeInTheDocument()
+      // Value/date should NOT render text — they show skeleton divs instead
+      // So we verify the View links still show
+      const links = screen.getAllByRole('link', { name: /view/i })
+      expect(links).toHaveLength(3)
+    })
+
+    it('shows fallback — when metadata fetch errors', () => {
+      mockUseTokenMetadata.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: new Error('IPFS network error'),
+      })
+
+      renderTable()
+
+      // Should show on-chain values as fallback
+      expect(screen.getByText('1000')).toBeInTheDocument()
+      expect(screen.getByText('500')).toBeInTheDocument()
+      expect(screen.getByText('250')).toBeInTheDocument()
+    })
   })
 
   describe('filters', () => {

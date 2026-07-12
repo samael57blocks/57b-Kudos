@@ -49,6 +49,9 @@ vi.mock('../hooks/useCompanyNFTs', () => ({
 vi.mock('../views/EmployeePortfolio', () => ({
   EmployeePortfolio: () => <div data-testid="employee-portfolio">Employee Portfolio</div>,
 }))
+vi.mock('../views/RegistrationPage', () => ({
+  RegistrationPage: () => <div data-testid="registration-page">Registration Page</div>,
+}))
 
 function renderApp(initialEntries = ['/']) {
   return render(
@@ -189,6 +192,33 @@ describe('App routing', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('employee-portfolio')).toBeInTheDocument()
+    })
+  })
+
+  it('allows company_admin to access /company route', async () => {
+    mockUseWalletConnection.mockReturnValue({
+      address: '0xCA' as `0x${string}`,
+      isConnected: true,
+      isConnecting: false,
+      isCorrectNetwork: true,
+      chainName: 'Hardhat Local',
+      targetNetwork: 'localhost',
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      switchToTargetNetwork: vi.fn(),
+      isSwitchingNetwork: false,
+    })
+    mockUseUserRole.mockReturnValue({
+      role: 'company_admin' as UserRole,
+      employeeCompanyId: undefined,
+      isLoading: false,
+      error: null,
+    })
+
+    renderApp(['/company'])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('registration-page')).toBeInTheDocument()
     })
   })
 

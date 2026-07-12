@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { getEventSelector } from 'viem'
+import { toast } from 'sonner'
 import { COMPANY_REGISTRY_ABI, getContractAddresses } from '../config/contracts'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -101,6 +102,18 @@ export function useRegisterCompany(): UseRegisterCompanyResult {
       setStep('error')
     }
   }, [confirmError, step])
+
+  // ── Toasts ───────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (step === 'confirming') {
+      toast.loading('Registering company...')
+    } else if (step === 'success') {
+      toast.success('Company registered!')
+    } else if (step === 'error') {
+      toast.error(error?.message ?? 'Registration failed')
+    }
+  }, [step, error])
 
   // ── Register function ──────────────────────────────────────────────────────
 
