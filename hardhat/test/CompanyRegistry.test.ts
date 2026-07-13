@@ -575,6 +575,59 @@ describe("CompanyRegistry", function () {
   });
 
   // ══════════════════════════════════════════════════════
+  //  hasMinterRole
+  // ══════════════════════════════════════════════════════
+
+  describe("hasMinterRole", function () {
+    async function minterFixture() {
+      const fixture = await deployFixture();
+      const { registry, owner, companyAdmin, minterWallet } = fixture;
+
+      await registry.write.registerCompany(
+        ["ACME Corp", companyAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.registerEmployee([0n], {
+        account: minterWallet.account,
+      });
+
+      return fixture;
+    }
+
+    it("hasMinterRole-Happy: returns true when MINTER_ROLE is granted", async function () {
+      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
+
+      await registry.write.grantMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+
+      const result = await registry.read.hasMinterRole([minterWallet.account.address]);
+      expect(result).to.be.true;
+    });
+
+    it("hasMinterRole-Happy: returns false when MINTER_ROLE is not granted", async function () {
+      const { registry, minterWallet } = await loadFixture(minterFixture);
+
+      const result = await registry.read.hasMinterRole([minterWallet.account.address]);
+      expect(result).to.be.false;
+    });
+
+    it("hasMinterRole-Happy: returns false after MINTER_ROLE is revoked", async function () {
+      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
+
+      await registry.write.grantMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+      expect(await registry.read.hasMinterRole([minterWallet.account.address])).to.be.true;
+
+      await registry.write.revokeMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+      expect(await registry.read.hasMinterRole([minterWallet.account.address])).to.be.false;
+    });
+  });
+
+  // ══════════════════════════════════════════════════════
   //  mintKudos
   // ══════════════════════════════════════════════════════
 

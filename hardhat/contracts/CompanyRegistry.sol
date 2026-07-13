@@ -301,6 +301,13 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
         emit MinterRoleRevoked(companyId, employee);
     }
 
+    /// @notice Check whether an address holds MINTER_ROLE
+    /// @param account The address to check
+    /// @return true if the address has MINTER_ROLE
+    function hasMinterRole(address account) external view returns (bool) {
+        return hasRole(MINTER_ROLE, account);
+    }
+
     /// @notice Mint a Kudos NFT to an employee (requires MINTER_ROLE, same company)
     /// @param employee The employee address to mint to
     /// @param uri Metadata URI for the Kudos NFT
