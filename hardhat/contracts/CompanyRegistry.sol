@@ -58,6 +58,28 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
     error OnlyCompanyAdminOrAdmin(address caller, uint256 companyId);
 
     // ══════════════════════════════════════════════════════
+    //  Minter Role
+    // ══════════════════════════════════════════════════════
+
+    /// @notice Role identifier for Kudos minters (distinct from RecognitionToken's MINTER_ROLE)
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
+    /// @notice Emitted when MINTER_ROLE is granted to an employee
+    event MinterRoleGranted(uint256 indexed companyId, address indexed employee);
+
+    /// @notice Emitted when MINTER_ROLE is revoked from an employee
+    event MinterRoleRevoked(uint256 indexed companyId, address indexed employee);
+
+    /// @notice Emitted when a minter mints a Kudos NFT
+    event KudosMinted(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee, address minter);
+
+    /// @notice Revert when caller does not hold MINTER_ROLE
+    error OnlyMinter(address caller);
+
+    /// @notice Revert when minter and employee belong to different companies
+    error NotSameCompany(uint256 minterCompany, uint256 employeeCompany);
+
+    // ══════════════════════════════════════════════════════
     //  Reward Orchestration Errors
     // ══════════════════════════════════════════════════════
 
@@ -247,5 +269,52 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
 
         // Mint ERC-721 recognition badge (amount=0 as RecognitionToken auto-increments)
         IReward(recognitionToken).emitReward(employee, 0, uri);
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  Minter Role Management
+    // ══════════════════════════════════════════════════════
+
+    /// @notice Grant MINTER_ROLE to an employee of the caller's company
+    /// @param employee The employee address to grant minter rights to
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE or the company admin of the employee's company.
+    function grantMinterRole(address employee) external {
+        uint256 stored = _employeeCompanies[employee];
+        if (stored == 0) revert EmployeeNotRegistered(employee);
+        uint256 companyId = stored - 1;
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && _companies[companyId].admin != msg.sender)
+            revert OnlyCompanyAdminOrAdmin(msg.sender, companyId);
+        _grantRole(MINTER_ROLE, employee);
+        emit MinterRoleGranted(companyId, employee);
+    }
+
+    /// @notice Revoke MINTER_ROLE from an employee
+    /// @param employee The employee address to revoke minter rights from
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE or the company admin of the employee's company.
+    function revokeMinterRole(address employee) external {
+        uint256 stored = _employeeCompanies[employee];
+        if (stored == 0) revert EmployeeNotRegistered(employee);
+        uint256 companyId = stored - 1;
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && _companies[companyId].admin != msg.sender)
+            revert OnlyCompanyAdminOrAdmin(msg.sender, companyId);
+        _revokeRole(MINTER_ROLE, employee);
+        emit MinterRoleRevoked(companyId, employee);
+    }
+
+    /// @notice Mint a Kudos NFT to an employee (requires MINTER_ROLE, same company)
+    /// @param employee The employee address to mint to
+    /// @param uri Metadata URI for the Kudos NFT
+    /// @return tokenId The ID of the minted token
+    function mintKudos(address employee, string calldata uri) external onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+        uint256 empStored = _employeeCompanies[employee];
+        if (empStored == 0) revert EmployeeNotRegistered(employee);
+        uint256 employeeCompany = empStored - 1;
+
+        uint256 minterStored = _employeeCompanies[msg.sender];
+        uint256 minterCompany = minterStored - 1;
+        if (minterCompany != employeeCompany) revert NotSameCompany(minterCompany, employeeCompany);
+
+        tokenId = nft57b.safeMint(employee, uri);
+        emit KudosMinted(tokenId, employeeCompany, employee, msg.sender);
     }
 }
