@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAccount, usePublicClient } from 'wagmi'
 import { parseAbiItem } from 'viem'
 import { Layout } from '../components/Layout'
@@ -115,6 +115,8 @@ export function MinterDashboard() {
   const { address, isConnected } = useAccount()
   const { companyId, isLoading: isCompanyLoading } = useCompanyId(address)
   const publicClient = usePublicClient()
+  const publicClientRef = useRef(publicClient)
+  publicClientRef.current = publicClient
   const contracts = getContractAddresses()
 
   const [mints, setMints] = useState<MintEvent[]>([])
@@ -122,7 +124,7 @@ export function MinterDashboard() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!contracts?.companyRegistry || companyId === null || companyId === undefined || !publicClient) {
+    if (!contracts?.companyRegistry || companyId === null || companyId === undefined || !publicClientRef.current) {
       setMints([])
       return
     }
@@ -134,7 +136,7 @@ export function MinterDashboard() {
       setError(null)
 
       try {
-        const logs = await publicClient.getLogs({
+        const logs = await publicClientRef.current!.getLogs({
           address: contracts.companyRegistry,
           event: parseAbiItem(
             'event KudosMinted(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee, address minter)',
@@ -165,7 +167,7 @@ export function MinterDashboard() {
     fetchMints()
 
     return () => { cancelled = true }
-  }, [contracts?.companyRegistry, companyId, publicClient])
+  }, [contracts?.companyRegistry, companyId])
 
   // ── Derived stats ─────────────────────────────────────────────────────────
 
