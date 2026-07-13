@@ -1,6 +1,6 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { useCallback, useState } from 'react'
-import { RECOGNITION_TOKEN_ABI, getContractAddresses } from '../config/contracts'
+import { COMPANY_REGISTRY_ABI, getContractAddresses } from '../config/contracts'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -20,12 +20,12 @@ export interface UseMinterRoleResult {
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
- * Check whether an employee holds MINTER_ROLE on the RecognitionToken contract,
+ * Check whether an employee holds MINTER_ROLE on the CompanyRegistry contract,
  * and provide grant/revoke write functions.
  *
  * Returns the role state, loading flag, and callable functions.
  * Uses wagmi `useReadContract` for `hasRole` and `useWriteContract` +
- * `useWaitForTransactionReceipt` for `grantRole` / `revokeRole`.
+ * `useWaitForTransactionReceipt` for `grantMinterRole` / `revokeMinterRole`.
  */
 export function useMinterRole(
   employeeAddress: `0x${string}` | undefined,
@@ -39,12 +39,12 @@ export function useMinterRole(
     isFetching: isRoleLoading,
     refetch: refetchRole,
   } = useReadContract({
-    address: contracts?.recognitionToken,
-    abi: RECOGNITION_TOKEN_ABI,
+    address: contracts?.companyRegistry,
+    abi: COMPANY_REGISTRY_ABI,
     functionName: 'hasRole',
     args: employeeAddress ? [MINTER_ROLE, employeeAddress] : undefined,
     query: {
-      enabled: !!contracts?.recognitionToken && !!employeeAddress,
+      enabled: !!contracts?.companyRegistry && !!employeeAddress,
       staleTime: 30_000,
     },
   })
@@ -57,14 +57,14 @@ export function useMinterRole(
   const [error, setError] = useState<Error | null>(null)
 
   const grantMinter = useCallback(async () => {
-    if (!contracts?.recognitionToken || !employeeAddress) return
+    if (!contracts?.companyRegistry || !employeeAddress) return
     setError(null)
     try {
       await writeContractAsync({
-        address: contracts.recognitionToken,
-        abi: RECOGNITION_TOKEN_ABI,
-        functionName: 'grantRole',
-        args: [MINTER_ROLE, employeeAddress],
+        address: contracts.companyRegistry,
+        abi: COMPANY_REGISTRY_ABI,
+        functionName: 'grantMinterRole',
+        args: [employeeAddress],
       })
       // Refetch hasRole after confirmation
       await refetchRole()
@@ -73,17 +73,17 @@ export function useMinterRole(
       setError(e)
       throw e
     }
-  }, [contracts?.recognitionToken, employeeAddress, writeContractAsync, refetchRole])
+  }, [contracts?.companyRegistry, employeeAddress, writeContractAsync, refetchRole])
 
   const revokeMinter = useCallback(async () => {
-    if (!contracts?.recognitionToken || !employeeAddress) return
+    if (!contracts?.companyRegistry || !employeeAddress) return
     setError(null)
     try {
       await writeContractAsync({
-        address: contracts.recognitionToken,
-        abi: RECOGNITION_TOKEN_ABI,
-        functionName: 'revokeRole',
-        args: [MINTER_ROLE, employeeAddress],
+        address: contracts.companyRegistry,
+        abi: COMPANY_REGISTRY_ABI,
+        functionName: 'revokeMinterRole',
+        args: [employeeAddress],
       })
       // Refetch hasRole after confirmation
       await refetchRole()
@@ -92,7 +92,7 @@ export function useMinterRole(
       setError(e)
       throw e
     }
-  }, [contracts?.recognitionToken, employeeAddress, writeContractAsync, refetchRole])
+  }, [contracts?.companyRegistry, employeeAddress, writeContractAsync, refetchRole])
 
   // ── Aggregate error ───────────────────────────────────────────────────────
 
