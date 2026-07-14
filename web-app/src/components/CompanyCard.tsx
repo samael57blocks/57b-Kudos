@@ -1,3 +1,5 @@
+import { formatAddress } from '../utils/format'
+
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const cardStyle: React.CSSProperties = {
@@ -52,12 +54,6 @@ interface CompanyCardProps {
   companyName: string
   companyId: bigint
   adminAddress: `0x${string}`
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatAddress(address: `0x${string}`): string {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────

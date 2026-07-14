@@ -1,4 +1,5 @@
 import { useWalletConnection } from '../hooks/useWalletConnection'
+import { formatAddress } from '../utils/format'
 
 const buttonStyle: React.CSSProperties = {
   padding: '8px 16px',
@@ -18,13 +19,6 @@ const connectedStyle: React.CSSProperties = {
   background: 'var(--code-bg, #f4f3ec)',
   color: 'var(--text-h, #08060d)',
   cursor: 'default',
-}
-
-/**
- * Shorten an address for display.
- */
-function truncateAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 
 /**
@@ -58,7 +52,7 @@ export function ConnectButton() {
         }}
         title="Click to disconnect"
       >
-        {truncateAddress(address)}
+        {formatAddress(address)}
       </button>
     )
   }

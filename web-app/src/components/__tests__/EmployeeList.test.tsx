@@ -94,8 +94,8 @@ describe('EmployeeList', () => {
   it('renders employee data rows with truncated addresses', () => {
     renderList()
 
-    expect(screen.getByText('0x1111…1111')).toBeInTheDocument()
-    expect(screen.getByText('0x2222…2222')).toBeInTheDocument()
+    expect(screen.getByText('0x1111...1111')).toBeInTheDocument()
+    expect(screen.getByText('0x2222...2222')).toBeInTheDocument()
 
     expect(screen.getByText('2024-01-10')).toBeInTheDocument()
     expect(screen.getByText('2024-02-15')).toBeInTheDocument()
