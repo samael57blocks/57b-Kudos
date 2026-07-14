@@ -1,0 +1,82 @@
+/* Token classes absorbed from src/styles/tokens.ts */
+
+.skeleton {
+  height: 16px;
+  background: var(--bg-subtle, #f0f0f5);
+  border-radius: 4px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Component-specific styles */
+
+.container {
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 8px;
+  background: var(--bg, #fff);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, #e5e4e7);
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  padding: 10px 16px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+  border-bottom: 1px solid var(--border, #e5e4e7);
+  background: var(--bg-subtle, #f8f8fa);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border, #e5e4e7);
+  color: var(--text, #6b6375);
+}
+
+.filterInput {
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 4px;
+  width: 140px;
+}
+
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text, #6b6375);
+  font-size: 14px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.link {
+  color: var(--accent, #aa3bff);
+  text-decoration: underline;
+  font-size: 12px;
+}

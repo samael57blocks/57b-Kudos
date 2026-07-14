@@ -1,107 +1,7 @@
 import { useCompanyEmployees, type EmployeeData } from '../hooks/useCompanyEmployees'
 import { useMinterRole } from '../hooks/useMinterRole'
 import { formatAddress } from '../utils/format'
-import { skeletonStyle } from '../styles/tokens'
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const sectionStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-}
-
-const headerRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-}
-
-const titleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: '16px',
-  fontWeight: 700,
-  color: 'var(--text-h, #08060d)',
-}
-
-const refreshButtonStyle: React.CSSProperties = {
-  padding: '6px 14px',
-  fontSize: '12px',
-  fontWeight: 600,
-  border: '1px solid var(--border, #e5e4e7)',
-  borderRadius: '6px',
-  cursor: 'pointer',
-  background: 'var(--bg, #fff)',
-  color: 'var(--text, #6b6375)',
-}
-
-const tableStyle: React.CSSProperties = {
-  width: '100%',
-  borderCollapse: 'collapse',
-  fontSize: '13px',
-}
-
-const thStyle: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '10px 12px',
-  borderBottom: '2px solid var(--border, #e5e4e7)',
-  color: 'var(--text, #6b6375)',
-  fontWeight: 600,
-  fontSize: '12px',
-  textTransform: 'uppercase',
-  letterSpacing: '0.5px',
-}
-
-const tdStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  borderBottom: '1px solid var(--border, #e5e4e7)',
-  color: 'var(--text-h, #08060d)',
-}
-
-const monoStyle: React.CSSProperties = {
-  fontFamily: 'monospace',
-  fontSize: '12px',
-}
-
-const emptyStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '32px',
-  color: 'var(--text, #6b6375)',
-  fontSize: '14px',
-}
-
-const toggleButtonStyle: React.CSSProperties = {
-  padding: '4px 10px',
-  fontSize: '11px',
-  fontWeight: 600,
-  border: 'none',
-  borderRadius: '4px',
-  cursor: 'pointer',
-  transition: 'all 0.15s',
-}
-
-const minterActiveStyle: React.CSSProperties = {
-  ...toggleButtonStyle,
-  background: '#e6f7e6',
-  color: '#38a169',
-}
-
-const minterInactiveStyle: React.CSSProperties = {
-  ...toggleButtonStyle,
-  background: '#f0f0f5',
-  color: '#6b6375',
-}
-
-const minterLoadingStyle: React.CSSProperties = {
-  ...toggleButtonStyle,
-  opacity: 0.5,
-  cursor: 'not-allowed',
-}
-
-const minterColumnStyle: React.CSSProperties = {
-  ...tdStyle,
-  textAlign: 'center',
-}
+import styles from './EmployeeList.module.css'
 
 // ── EmployeeRow sub-component ─────────────────────────────────────────────────
 
@@ -136,20 +36,20 @@ function EmployeeRow({
 
   return (
     <tr>
-      <td style={{ ...tdStyle, ...monoStyle }}>{formatAddress(employee.employee)}</td>
-      <td style={tdStyle}>{employee.date || '—'}</td>
+      <td className={`${styles.td} ${styles.mono}`}>{formatAddress(employee.employee)}</td>
+      <td className={styles.td}>{employee.date || '—'}</td>
       {showMinterToggle && (
-        <td style={minterColumnStyle}>
+        <td className={styles.minterColumn}>
           <button
             type="button"
             onClick={handleToggle}
             disabled={isLoading}
-            style={
+            className={
               isLoading
-                ? minterLoadingStyle
+                ? styles.minterLoading
                 : isMinter
-                  ? minterActiveStyle
-                  : minterInactiveStyle
+                  ? styles.minterActive
+                  : styles.minterInactive
             }
             aria-label={
               isMinter
@@ -188,24 +88,24 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
 
   if (isLoading) {
     return (
-      <div style={sectionStyle}>
-        <div style={headerRowStyle}>
-          <h3 style={titleStyle}>Employees</h3>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Employees</h3>
         </div>
-        <table style={tableStyle}>
+        <table className={styles.table}>
           <thead>
             <tr>
-              <th style={thStyle}>Employee Address</th>
-              <th style={thStyle}>Registration Date</th>
-              {showMinterToggle && <th style={thStyle}>Minter Role</th>}
+              <th className={styles.th}>Employee Address</th>
+              <th className={styles.th}>Registration Date</th>
+              {showMinterToggle && <th className={styles.th}>Minter Role</th>}
             </tr>
           </thead>
           <tbody>
             {[1, 2, 3].map((i) => (
               <tr key={i} data-testid="skeleton-row">
-                <td style={tdStyle}><div style={skeletonStyle} /></td>
-                <td style={tdStyle}><div style={skeletonStyle} /></td>
-                {showMinterToggle && <td style={tdStyle}><div style={skeletonStyle} /></td>}
+                <td className={styles.td}><div className={styles.skeleton} /></td>
+                <td className={styles.td}><div className={styles.skeleton} /></td>
+                {showMinterToggle && <td className={styles.td}><div className={styles.skeleton} /></td>}
               </tr>
             ))}
           </tbody>
@@ -218,14 +118,14 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
 
   if (error) {
     return (
-      <div style={sectionStyle}>
-        <div style={headerRowStyle}>
-          <h3 style={titleStyle}>Employees</h3>
-          <button type="button" onClick={refresh} style={refreshButtonStyle}>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Employees</h3>
+          <button type="button" onClick={refresh} className={styles.refreshButton}>
             Retry
           </button>
         </div>
-        <p style={{ ...emptyStyle, color: '#e53e3e' }} role="alert">
+        <p className={`${styles.empty}`} style={{ color: '#e53e3e' }} role="alert">
           {error.message}
         </p>
       </div>
@@ -236,11 +136,11 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
 
   if (employees.length === 0) {
     return (
-      <div style={sectionStyle}>
-        <div style={headerRowStyle}>
-          <h3 style={titleStyle}>Employees</h3>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3 className={styles.title}>Employees</h3>
         </div>
-        <p style={emptyStyle}>No employees registered</p>
+        <p className={styles.empty}>No employees registered</p>
       </div>
     )
   }
@@ -248,19 +148,19 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
   // ── Data state ────────────────────────────────────────────────────────────
 
   return (
-    <div style={sectionStyle}>
-      <div style={headerRowStyle}>
-        <h3 style={titleStyle}>Employees</h3>
-        <button type="button" onClick={refresh} style={refreshButtonStyle}>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>Employees</h3>
+        <button type="button" onClick={refresh} className={styles.refreshButton}>
           Refresh
         </button>
       </div>
-      <table style={tableStyle}>
+      <table className={styles.table}>
         <thead>
           <tr>
-            <th style={thStyle}>Employee Address</th>
-            <th style={thStyle}>Registration Date</th>
-            {showMinterToggle && <th style={thStyle}>Minter Role</th>}
+            <th className={styles.th}>Employee Address</th>
+            <th className={styles.th}>Registration Date</th>
+            {showMinterToggle && <th className={styles.th}>Minter Role</th>}
           </tr>
         </thead>
         <tbody>
