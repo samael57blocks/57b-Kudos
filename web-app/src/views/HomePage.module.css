@@ -1,0 +1,110 @@
+.section {
+  padding: 32px 40px;
+}
+
+.cardRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.card {
+  background: var(--bg-card, #f5f3f7);
+  border-radius: 12px;
+  padding: 20px 24px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.statNumber {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--accent, #aa3bff);
+  margin: 8px 0;
+}
+
+.statLabel {
+  font-size: 14px;
+  color: var(--text, #6b6375);
+  margin: 0;
+}
+
+.employeeItem {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border, #e0dce6);
+  font-size: 14px;
+  color: var(--text, #6b6375);
+  font-family: monospace;
+}
+
+.link {
+  color: var(--accent, #aa3bff);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.welcome {
+  margin-bottom: 48px;
+}
+
+/* Inline-style replacements */
+
+.centerMessage {
+  text-align: center;
+  margin-top: 80px;
+}
+
+.mutedText {
+  color: var(--text, #6b6375);
+}
+
+.mutedTextBody {
+  color: var(--text, #6b6375);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.headingSpacer {
+  margin-bottom: 50px;
+}
+
+.bodySpacer {
+  margin-bottom: 24px;
+}
+
+.listReset {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sectionSubtitle {
+  font-size: 14px;
+  color: var(--text, #6b6375);
+  margin-bottom: 24px;
+}
+
+.subHeading {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.subHeadingLg {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.sectionSpacer {
+  margin-bottom: 32px;
+}
+
+.welcomeHeading {
+  margin-bottom: 48px;
+}
+
+.welcomeBody {
+  color: var(--text, #6b6375);
+  margin-bottom: 48px;
+}

@@ -4,101 +4,7 @@ import { Layout } from '../components/Layout'
 import { useCompanyId } from '../hooks/useCompanyId'
 import { useCompanyEmployees } from '../hooks/useCompanyEmployees'
 import { COMPANY_REGISTRY_ABI, getContractAddresses } from '../config/contracts'
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const containerStyle: React.CSSProperties = {
-  maxWidth: '560px',
-  margin: '0 auto',
-}
-
-const titleStyle: React.CSSProperties = {
-  fontSize: '22px',
-  fontWeight: 700,
-  color: 'var(--text-h, #08060d)',
-  marginBottom: '4px',
-}
-
-const subtitleStyle: React.CSSProperties = {
-  color: 'var(--text, #6b6375)',
-  fontSize: '14px',
-  marginBottom: '24px',
-}
-
-const formStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '16px',
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '6px',
-  fontSize: '14px',
-  fontWeight: 500,
-  color: 'var(--text-h, #08060d)',
-}
-
-const inputStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  borderRadius: '8px',
-  border: '1px solid var(--border, #e5e4e7)',
-  fontSize: '14px',
-  fontFamily: 'inherit',
-  background: 'var(--bg, #fff)',
-  color: 'var(--text-h, #08060d)',
-}
-
-const buttonStyle: React.CSSProperties = {
-  padding: '12px 24px',
-  borderRadius: '8px',
-  border: 'none',
-  background: 'var(--accent, #aa3bff)',
-  color: '#fff',
-  fontSize: '14px',
-  fontWeight: 600,
-  cursor: 'pointer',
-  marginTop: '8px',
-}
-
-const buttonDisabledStyle: React.CSSProperties = {
-  ...buttonStyle,
-  opacity: 0.6,
-  cursor: 'not-allowed',
-}
-
-const successStyle: React.CSSProperties = {
-  padding: '12px 16px',
-  borderRadius: '8px',
-  background: '#ecfdf5',
-  border: '1px solid #6ee7b7',
-  color: '#065f46',
-  fontSize: '14px',
-  marginBottom: '16px',
-}
-
-const errorStyle: React.CSSProperties = {
-  padding: '12px 16px',
-  borderRadius: '8px',
-  background: '#fef2f2',
-  border: '1px solid #fca5a5',
-  color: '#991b1b',
-  fontSize: '14px',
-  marginBottom: '16px',
-}
-
-const connectStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '80px 20px',
-  color: 'var(--text, #6b6375)',
-}
-
-const loadingStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '40px 20px',
-  color: 'var(--text, #6b6375)',
-}
+import styles from './MintNftPage.module.css'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -146,7 +52,7 @@ export function MintNftPage() {
   if (!isConnected) {
     return (
       <Layout>
-        <div style={connectStyle}>
+        <div className={styles.connect}>
           <p>Connect your wallet to mint Kudos NFTs.</p>
         </div>
       </Layout>
@@ -155,34 +61,34 @@ export function MintNftPage() {
 
   return (
     <Layout>
-      <div style={containerStyle}>
-        <h1 style={titleStyle}>Mint Kudos NFT</h1>
-        <p style={subtitleStyle}>
+      <div className={styles.container}>
+        <h1 className={styles.title}>Mint Kudos NFT</h1>
+        <p className={styles.subtitle}>
           Reward an employee with a recognition NFT.
         </p>
 
         {/* Success message */}
         {receipt && (
-          <div style={successStyle} role="status">
+          <div className={styles.preview} role="status">
             Kudos minted successfully!
           </div>
         )}
 
         {/* Error message */}
         {txError && (
-          <div style={errorStyle} role="alert">
+          <div className={styles.error} role="alert">
             {txError}
           </div>
         )}
 
         {isCompanyLoading || isEmployeesLoading ? (
-          <div style={loadingStyle}>Loading employees...</div>
+          <div className={styles.loading}>Loading employees...</div>
         ) : (
-          <form onSubmit={handleSubmit} style={formStyle}>
-            <label style={labelStyle}>
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <label className={styles.field}>
               Employee
               <select
-                style={inputStyle}
+                className={styles.input}
                 value={selectedEmployee}
                 onChange={(e) => setSelectedEmployee(e.target.value)}
                 aria-label="Employee"
@@ -196,11 +102,11 @@ export function MintNftPage() {
               </select>
             </label>
 
-            <label style={labelStyle}>
+            <label className={styles.field}>
               Metadata URI
               <input
                 type="text"
-                style={inputStyle}
+                className={styles.input}
                 placeholder="ipfs://Qm..."
                 value={uri}
                 onChange={(e) => setUri(e.target.value)}
@@ -210,11 +116,7 @@ export function MintNftPage() {
 
             <button
               type="submit"
-              style={
-                isPending || !selectedEmployee || !uri
-                  ? buttonDisabledStyle
-                  : buttonStyle
-              }
+              className={isPending || !selectedEmployee || !uri ? styles.buttonDisabled : styles.button}
               disabled={isPending || !selectedEmployee || !uri}
             >
               {isPending ? 'Minting...' : 'Mint Kudos'}

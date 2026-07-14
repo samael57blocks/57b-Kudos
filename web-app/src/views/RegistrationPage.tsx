@@ -8,45 +8,7 @@ import { EmployeeList } from '../components/EmployeeList'
 import { JoinCompanySection } from '../components/JoinCompanySection'
 import { RegisterCompanyDialog } from '../components/RegisterCompanyDialog'
 import { getContractAddresses, COMPANY_REGISTRY_ABI } from '../config/contracts'
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const containerStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '24px',
-}
-
-const titleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: '22px',
-  fontWeight: 700,
-  color: 'var(--text-h, #08060d)',
-}
-
-const emptyStyle: React.CSSProperties = {
-  textAlign: 'center',
-  marginTop: '80px',
-  color: 'var(--text, #6b6375)',
-}
-
-const ctaButtonStyle: React.CSSProperties = {
-  marginTop: '16px',
-  padding: '12px 24px',
-  fontSize: '14px',
-  fontWeight: 600,
-  border: 'none',
-  borderRadius: '6px',
-  cursor: 'pointer',
-  background: 'var(--accent, #aa3bff)',
-  color: '#fff',
-}
-
-const loadingStyle: React.CSSProperties = {
-  textAlign: 'center',
-  marginTop: '80px',
-  color: 'var(--text, #6b6375)',
-}
+import styles from './RegistrationPage.module.css'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -87,7 +49,7 @@ export function RegistrationPage() {
   if (!address) {
     return (
       <Layout>
-        <div style={emptyStyle}>
+        <div className={styles.empty}>
           <p>Connect your wallet to register</p>
         </div>
       </Layout>
@@ -99,7 +61,7 @@ export function RegistrationPage() {
   if (role === 'employee') {
     return (
       <Layout>
-        <div style={emptyStyle}>
+        <div className={styles.empty}>
           <p>You are already registered to a company</p>
         </div>
       </Layout>
@@ -113,9 +75,9 @@ export function RegistrationPage() {
     if (isCompanyIdLoading) {
       return (
         <Layout>
-          <div style={containerStyle}>
-            <h1 style={titleStyle}>Company</h1>
-            <div style={loadingStyle}>
+          <div className={styles.container}>
+            <h1 className={styles.title}>Company</h1>
+            <div className={styles.loading}>
               <p>Loading company information…</p>
             </div>
           </div>
@@ -127,9 +89,9 @@ export function RegistrationPage() {
     if (companyIdError) {
       return (
         <Layout>
-          <div style={containerStyle}>
-            <h1 style={titleStyle}>Company</h1>
-            <div style={emptyStyle}>
+          <div className={styles.container}>
+            <h1 className={styles.title}>Company</h1>
+            <div className={styles.empty}>
               <p role="alert">Error loading company: {companyIdError.message}</p>
             </div>
           </div>
@@ -141,14 +103,14 @@ export function RegistrationPage() {
     if (companyId === null) {
       return (
         <Layout>
-          <div style={containerStyle}>
-            <h1 style={titleStyle}>Company</h1>
-            <div style={emptyStyle}>
+          <div className={styles.container}>
+            <h1 className={styles.title}>Company</h1>
+            <div className={styles.empty}>
               <p>No company registered yet</p>
               <button
                 type="button"
                 onClick={() => setIsDialogOpen(true)}
-                style={ctaButtonStyle}
+                className={styles.ctaButton}
               >
                 Register Company
               </button>
@@ -167,8 +129,8 @@ export function RegistrationPage() {
     // Populated state: company card + employee list
     return (
       <Layout>
-        <div style={containerStyle}>
-          <h1 style={titleStyle}>Company</h1>
+        <div className={styles.container}>
+          <h1 className={styles.title}>Company</h1>
 
           <CompanyCard
             companyName={companyInfo?.name ?? 'Unknown'}
@@ -194,9 +156,9 @@ export function RegistrationPage() {
 
   return (
     <Layout>
-      <div style={containerStyle}>
-        <h1 style={titleStyle}>Company</h1>
-        <p style={{ color: 'var(--text, #6b6375)', fontSize: '14px', marginTop: '8px' }}>
+      <div className={styles.container}>
+        <h1 className={styles.title}>Company</h1>
+        <p className={styles.subtitle}>
           Join an existing company below to start receiving Kudos.
         </p>
         <JoinCompanySection onJoinSuccess={() => refetchRole?.()} />

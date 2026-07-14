@@ -1,0 +1,32 @@
+.wrapper {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.connectMessage {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text, #6b6375);
+}
+
+.connectHeading {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+  margin-bottom: 8px;
+}
+
+.smallText {
+  font-size: 14px;
+}
+
+.titleLine {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: var(--text, #6b6375);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
