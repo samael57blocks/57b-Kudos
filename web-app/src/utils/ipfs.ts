@@ -61,7 +61,7 @@ function parseCID(uri: string): string | undefined {
 /**
  * Build a gateway URL for a CID.
  */
-function gatewayURL(cid: string): string {
+export function gatewayURL(cid: string): string {
   const gateway =
     import.meta.env.VITE_PINATA_GATEWAY ?? 'https://gateway.pinata.cloud'
   return `${gateway}/ipfs/${cid}`
