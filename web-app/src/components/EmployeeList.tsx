@@ -117,14 +117,20 @@ function formatAddress(address: `0x${string}`): string {
 // ── EmployeeRow sub-component ─────────────────────────────────────────────────
 
 /**
- * Render a single employee row with address, date, and Minter role toggle.
+ * Render a single employee row with address, date, and optionally a Minter role toggle.
  *
  * Extracted as a separate component so each row can independently call
  * the `useMinterRole` hook (hooks cannot be called inside loops/map).
  */
-function EmployeeRow({ employee }: { employee: EmployeeData }) {
+function EmployeeRow({
+  employee,
+  showMinterToggle,
+}: {
+  employee: EmployeeData
+  showMinterToggle: boolean
+}) {
   const { isMinter, isLoading, grantMinter, revokeMinter, error } = useMinterRole(
-    employee.employee,
+    showMinterToggle ? employee.employee : undefined,
   )
 
   const handleToggle = async () => {
@@ -143,28 +149,30 @@ function EmployeeRow({ employee }: { employee: EmployeeData }) {
     <tr>
       <td style={{ ...tdStyle, ...monoStyle }}>{formatAddress(employee.employee)}</td>
       <td style={tdStyle}>{employee.date || '—'}</td>
-      <td style={minterColumnStyle}>
-        <button
-          type="button"
-          onClick={handleToggle}
-          disabled={isLoading}
-          style={
-            isLoading
-              ? minterLoadingStyle
-              : isMinter
-                ? minterActiveStyle
-                : minterInactiveStyle
-          }
-          aria-label={
-            isMinter
-              ? `Revoke Minter role from ${employee.employee}`
-              : `Grant Minter role to ${employee.employee}`
-          }
-          title={error ? `Error: ${error.message}` : undefined}
-        >
-          {isLoading ? '…' : isMinter ? 'Minter' : 'Grant'}
-        </button>
-      </td>
+      {showMinterToggle && (
+        <td style={minterColumnStyle}>
+          <button
+            type="button"
+            onClick={handleToggle}
+            disabled={isLoading}
+            style={
+              isLoading
+                ? minterLoadingStyle
+                : isMinter
+                  ? minterActiveStyle
+                  : minterInactiveStyle
+            }
+            aria-label={
+              isMinter
+                ? `Revoke Minter role from ${employee.employee}`
+                : `Grant Minter role to ${employee.employee}`
+            }
+            title={error ? `Error: ${error.message}` : undefined}
+          >
+            {isLoading ? '…' : isMinter ? 'Minter' : 'Grant'}
+          </button>
+        </td>
+      )}
     </tr>
   )
 }
@@ -173,16 +181,18 @@ function EmployeeRow({ employee }: { employee: EmployeeData }) {
 
 interface EmployeeListProps {
   companyId: bigint
+  /** Show the Minter role toggle column (admin-only). Default: false */
+  showMinterToggle?: boolean
 }
 
 /**
  * Table of employees registered to a company, showing employee address,
- * registration date, and a Minter role toggle button per row.
+ * registration date, and optionally a Minter role toggle button per row.
  *
  * Uses `useCompanyEmployees` for the employee list and `useMinterRole`
- * per row for role state.
+ * per row for role state (only when showMinterToggle is true).
  */
-export function EmployeeList({ companyId }: EmployeeListProps) {
+export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeListProps) {
   const { employees, isLoading, error, refresh } = useCompanyEmployees(companyId)
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -198,7 +208,7 @@ export function EmployeeList({ companyId }: EmployeeListProps) {
             <tr>
               <th style={thStyle}>Employee Address</th>
               <th style={thStyle}>Registration Date</th>
-              <th style={thStyle}>Minter Role</th>
+              {showMinterToggle && <th style={thStyle}>Minter Role</th>}
             </tr>
           </thead>
           <tbody>
@@ -206,7 +216,7 @@ export function EmployeeList({ companyId }: EmployeeListProps) {
               <tr key={i} data-testid="skeleton-row">
                 <td style={tdStyle}><div style={skeletonStyle} /></td>
                 <td style={tdStyle}><div style={skeletonStyle} /></td>
-                <td style={tdStyle}><div style={skeletonStyle} /></td>
+                {showMinterToggle && <td style={tdStyle}><div style={skeletonStyle} /></td>}
               </tr>
             ))}
           </tbody>
@@ -261,12 +271,16 @@ export function EmployeeList({ companyId }: EmployeeListProps) {
           <tr>
             <th style={thStyle}>Employee Address</th>
             <th style={thStyle}>Registration Date</th>
-            <th style={thStyle}>Minter Role</th>
+            {showMinterToggle && <th style={thStyle}>Minter Role</th>}
           </tr>
         </thead>
         <tbody>
           {employees.map((emp) => (
-            <EmployeeRow key={emp.employee} employee={emp} />
+            <EmployeeRow
+              key={emp.employee}
+              employee={emp}
+              showMinterToggle={showMinterToggle}
+            />
           ))}
         </tbody>
       </table>

@@ -54,8 +54,8 @@ function setupMinterRoleState(overrides: Record<string, unknown> = {}) {
   mockUseMinterRole.mockReturnValue({ ...defaults, ...overrides })
 }
 
-function renderList() {
-  return render(<EmployeeList companyId={COMPANY_ID} />)
+function renderList(showMinterToggle = false) {
+  return render(<EmployeeList companyId={COMPANY_ID} showMinterToggle={showMinterToggle} />)
 }
 
 // --- Tests ---
@@ -110,17 +110,23 @@ describe('EmployeeList', () => {
     expect(mockRefresh).toHaveBeenCalledTimes(1)
   })
 
-  // ── Minter Role column ─────────────────────────────────────────────────────
+  // ── Minter Role column (admin-only) ─────────────────────────────────────────
 
-  it('renders Minter Role column header', () => {
-    renderList()
+  it('does not render Minter Role column when showMinterToggle is false', () => {
+    renderList(false)
+
+    expect(screen.queryByText('Minter Role')).not.toBeInTheDocument()
+  })
+
+  it('renders Minter Role column header when showMinterToggle is true', () => {
+    renderList(true)
 
     expect(screen.getByText('Minter Role')).toBeInTheDocument()
   })
 
   it('shows Grant button for non-minter employee', () => {
     setupMinterRoleState({ isMinter: false })
-    renderList()
+    renderList(true)
 
     // Both employees show "Grant" — verify at least one is rendered
     const grantButtons = screen.getAllByRole('button', { name: /grant minter role to/i })
@@ -130,7 +136,7 @@ describe('EmployeeList', () => {
 
   it('shows Minter status for minter employee', () => {
     setupMinterRoleState({ isMinter: true })
-    renderList()
+    renderList(true)
 
     // Both employees show "Minter" — verify at least one is rendered
     const minterButtons = screen.getAllByRole('button', { name: /revoke minter role from/i })
@@ -141,7 +147,7 @@ describe('EmployeeList', () => {
   it('calls grantMinter when Grant is clicked', () => {
     const grantMinter = vi.fn().mockResolvedValue(undefined)
     setupMinterRoleState({ isMinter: false, grantMinter })
-    renderList()
+    renderList(true)
 
     // Click the first Grant button
     const grantButtons = screen.getAllByRole('button', { name: /grant minter role to/i })
@@ -153,7 +159,7 @@ describe('EmployeeList', () => {
   it('calls revokeMinter when Revoke is clicked', () => {
     const revokeMinter = vi.fn().mockResolvedValue(undefined)
     setupMinterRoleState({ isMinter: true, revokeMinter })
-    renderList()
+    renderList(true)
 
     // Click the first Revoke button
     const revokeButtons = screen.getAllByRole('button', { name: /revoke minter role from/i })

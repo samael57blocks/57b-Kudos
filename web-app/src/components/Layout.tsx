@@ -109,6 +109,42 @@ export function Layout({ children }: LayoutProps) {
                  Company
               </NavLink>
             </>
+          ) : role === 'minter' ? (
+            <>
+              <NavLink
+                to="/mint"
+                style={({ isActive }) => ({
+                  ...navItemStyle,
+                  color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+                  borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+                  fontWeight: isActive ? 600 : 400,
+                })}
+              >
+                Mint
+              </NavLink>
+              <NavLink
+                to="/dashboard"
+                style={({ isActive }) => ({
+                  ...navItemStyle,
+                  color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+                  borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+                  fontWeight: isActive ? 600 : 400,
+                })}
+              >
+                Dashboard
+              </NavLink>
+              <NavLink
+                to="/portfolio"
+                style={({ isActive }) => ({
+                  ...navItemStyle,
+                  color: isActive ? 'var(--text-h, #08060d)' : 'var(--text, #6b6375)',
+                  borderLeftColor: isActive ? 'var(--accent, #aa3bff)' : 'transparent',
+                  fontWeight: isActive ? 600 : 400,
+                })}
+              >
+                My Portfolio
+              </NavLink>
+            </>
           ) : role === 'employee' ? (
             <NavLink
               to="/portfolio"

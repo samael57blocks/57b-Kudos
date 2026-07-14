@@ -6,7 +6,7 @@ import {
   getContractAddresses,
 } from '../config/contracts'
 
-export type UserRole = 'admin' | 'company_admin' | 'employee' | 'visitor'
+export type UserRole = 'admin' | 'minter' | 'company_admin' | 'employee' | 'visitor'
 
 export interface UserRoleResult {
   role: UserRole
@@ -29,9 +29,12 @@ export interface UseUserRoleOptions {
  * Detect the role of the connected wallet by reading from the contracts.
  *
  * - `admin`: has DEFAULT_ADMIN_ROLE on NFT57B (super admin / deployer)
+ * - `minter`: has MINTER_ROLE on CompanyRegistry (employee who can mint Kudos)
  * - `company_admin`: promoted from `visitor` when `options.companyAdmin` is true
  * - `employee`: registered in CompanyRegistry
  * - `visitor`: connected but no role
+ *
+ * Priority: admin > minter > company_admin > employee > visitor
  *
  * @param options Optional override to promote visitor → company_admin
  */
@@ -42,6 +45,9 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
   const [error, setError] = useState<string | null>(null)
 
   const contracts = getContractAddresses()
+
+  // MINTER_ROLE bytes32 constant (keccak256("MINTER_ROLE"))
+  const MINTER_ROLE_BYTES = '0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6' as `0x${string}`
 
   // 1. Check DEFAULT_ADMIN_ROLE
   const { data: defaultAdminRole } = useReadContract({
@@ -81,6 +87,15 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     query: { enabled: !!address && !!contracts?.companyRegistry, staleTime: 30_000 },
   })
 
+  // 3. Check MINTER_ROLE on CompanyRegistry
+  const { data: isMinter, isFetching: isMinterLoading, refetch: refetchMinter } = useReadContract({
+    address: contracts?.companyRegistry,
+    abi: COMPANY_REGISTRY_ABI,
+    functionName: 'hasRole',
+    args: address ? [MINTER_ROLE_BYTES, address] : undefined,
+    query: { enabled: !!address && !!contracts?.companyRegistry, staleTime: 30_000 },
+  })
+
   useEffect(() => {
     if (!address || !contracts) {
       setRole('visitor')
@@ -89,10 +104,19 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
       return
     }
 
-    if (isAdminLoading || isEmpLoading || isEmpLoading2) return
+    if (isAdminLoading || isEmpLoading || isEmpLoading2 || isMinterLoading) return
 
+    // Priority: admin > minter > employee > visitor
     if (isAdmin) {
       setRole('admin')
+      return
+    }
+
+    if (isMinter) {
+      setRole('minter')
+      // Minter is also an employee — get company ID if available
+      const companyId = empCompanyRaw !== undefined ? Number(empCompanyRaw) : 0
+      setEmployeeCompanyId(companyId)
       return
     }
 
@@ -103,18 +127,18 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
       return
     }
 
-    // Connected but not admin and not employee → company admin candidate
-    // (can't check on-chain without iterating; handled by T-009)
+    // Connected but not admin, not minter, not employee → visitor
     setRole('visitor')
     setEmployeeCompanyId(undefined)
     setError(null)
-  }, [address, contracts, isAdmin, isAdminLoading, empCompanyRaw, isEmpLoading, isEmp, isEmpLoading2])
+  }, [address, contracts, isAdmin, isAdminLoading, empCompanyRaw, isEmpLoading, isEmp, isEmpLoading2, isMinter, isMinterLoading])
 
   const refetchRole = useCallback(() => {
     refetchAdmin?.()
     refetchEmployee?.()
     refetchIsEmployee?.()
-  }, [refetchAdmin, refetchEmployee, refetchIsEmployee])
+    refetchMinter?.()
+  }, [refetchAdmin, refetchEmployee, refetchIsEmployee, refetchMinter])
 
   // Apply companyAdmin override — promotes visitor → company_admin
   const effectiveRole =
@@ -123,7 +147,7 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
   return {
     role: effectiveRole,
     employeeCompanyId,
-    isLoading: isAdminLoading || isEmpLoading || isEmpLoading2,
+    isLoading: isAdminLoading || isEmpLoading || isEmpLoading2 || isMinterLoading,
     error,
     refetchRole,
   }
