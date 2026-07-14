@@ -3,6 +3,7 @@ import { useTokenMetadata } from '../hooks/useTokenMetadata'
 import { RecognitionBadge } from './RecognitionBadge'
 import { getContractAddresses } from '../config/contracts'
 import type { EmployeeNFTData } from '../hooks/useEmployeeNFTs'
+import styles from './NFTDetail.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -10,80 +11,6 @@ interface NFTDetailProps {
   nft: EmployeeNFTData | null
   isOpen: boolean
   onClose: () => void
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(0,0,0,0.5)',
-  zIndex: 1000,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '20px',
-}
-
-const modalStyle: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: '16px',
-  maxWidth: '560px',
-  width: '100%',
-  maxHeight: '80vh',
-  overflowY: 'auto',
-  padding: '32px',
-  position: 'relative',
-  boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-}
-
-const closeButtonStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: '16px',
-  right: '16px',
-  background: 'none',
-  border: 'none',
-  fontSize: '20px',
-  cursor: 'pointer',
-  color: 'var(--text, #6b6375)',
-  width: '32px',
-  height: '32px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: '8px',
-}
-
-const fieldRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  padding: '10px 0',
-  borderBottom: '1px solid var(--border, #e5e4e7)',
-  fontSize: '14px',
-}
-
-const fieldLabelStyle: React.CSSProperties = {
-  color: 'var(--text, #6b6375)',
-  fontWeight: 500,
-}
-
-const fieldValueStyle: React.CSSProperties = {
-  color: 'var(--text-h, #08060d)',
-  fontWeight: 600,
-  textAlign: 'right',
-}
-
-const linkStyle: React.CSSProperties = {
-  color: 'var(--accent, #6366f1)',
-  textDecoration: 'none',
-  fontWeight: 600,
-  fontSize: '14px',
-}
-
-const loadingStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '40px',
-  color: 'var(--text, #6b6375)',
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -136,15 +63,15 @@ export function NFTDetail({ nft, isOpen, onClose }: NFTDetailProps) {
 
   return (
     <div
-      style={overlayStyle}
+      className={styles.overlay}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
       data-testid="modal-overlay"
     >
-      <div style={modalStyle} role="dialog" aria-label="NFT details">
+      <div className={styles.modal} role="dialog" aria-label="NFT details">
         <button
-          style={closeButtonStyle}
+          className={styles.closeButton}
           onClick={onClose}
           aria-label="Close"
           type="button"
@@ -152,78 +79,72 @@ export function NFTDetail({ nft, isOpen, onClose }: NFTDetailProps) {
           ✕
         </button>
 
-        <h2 style={{ marginTop: 0, marginBottom: '8px', fontSize: '22px' }}>
+        <h2 className={styles.header}>
           NFT #{nft.tokenId.toString()}
         </h2>
-        <p style={{ color: 'var(--text, #6b6375)', fontSize: '14px', marginBottom: '20px' }}>
+        <p className={styles.subtitle}>
           {nft.companyName ?? 'Unknown Company'}
         </p>
 
         {metaLoading && (
-          <div style={loadingStyle}>Loading metadata…</div>
+          <div className={styles.loading}>Loading metadata…</div>
         )}
 
         {metaImage && (
           <img
             src={metaImage}
             alt={metaName ?? `NFT #${nft.tokenId}`}
-            style={{
-              width: '100%',
-              borderRadius: '12px',
-              marginBottom: '20px',
-              maxHeight: '300px',
-              objectFit: 'cover',
-            }}
+            className={styles.media}
           />
         )}
 
         <div>
           {metaName && (
-            <div style={fieldRowStyle}>
-              <span style={fieldLabelStyle}>Name</span>
-              <span style={fieldValueStyle}>{metaName}</span>
+            <div className={styles.field}>
+              <span className={styles.label}>Name</span>
+              <span className={styles.value}>{metaName}</span>
             </div>
           )}
 
           {metaDescription && (
-            <div style={fieldRowStyle}>
-              <span style={fieldLabelStyle}>Description</span>
-              <span style={{ ...fieldValueStyle, fontWeight: 400, maxWidth: '300px' }}>
+            <div className={styles.field}>
+              <span className={styles.label}>Description</span>
+              <span className={styles.valueDescription}>
                 {metaDescription}
               </span>
             </div>
           )}
 
           {metaValue && (
-            <div style={fieldRowStyle}>
-              <span style={fieldLabelStyle}>Value</span>
-              <span style={fieldValueStyle}>
+            <div className={styles.field}>
+              <span className={styles.label}>Value</span>
+              <span className={styles.value}>
                 <RecognitionBadge value={metaValue} />
               </span>
             </div>
           )}
 
           {metaDate && (
-            <div style={fieldRowStyle}>
-              <span style={fieldLabelStyle}>Date</span>
-              <span style={fieldValueStyle}>{metaDate}</span>
+            <div className={styles.field}>
+              <span className={styles.label}>Date</span>
+              <span className={styles.value}>{metaDate}</span>
             </div>
           )}
 
-          <div style={fieldRowStyle}>
-            <span style={fieldLabelStyle}>Token ID</span>
-            <span style={fieldValueStyle}>{nft.tokenId.toString()}</span>
+          <div className={styles.field}>
+            <span className={styles.label}>Token ID</span>
+            <span className={styles.value}>{nft.tokenId.toString()}</span>
           </div>
 
           {explorerUrl && (
-            <div style={{ ...fieldRowStyle, borderBottom: 'none' }}>
-              <span style={fieldLabelStyle}>Explorer</span>
-              <span style={fieldValueStyle}>
+            <div className={styles.fieldLast}>
+              <span className={styles.label}>Explorer</span>
+              <span className={styles.value}>
                 <a
                   href={explorerUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={linkStyle}
+                  className={styles.link}
                   data-testid="explorer-link"
                 >
                   View on Etherscan ↗

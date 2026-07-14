@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { RecognitionBadge } from './RecognitionBadge'
 import type { EmployeeNFTData } from '../hooks/useEmployeeNFTs'
+import styles from './NFTGallery.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -11,77 +12,10 @@ interface NFTGalleryProps {
   onSelect: (nft: EmployeeNFTData) => void
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-  gap: '16px',
-}
-
-const cardStyle: React.CSSProperties = {
-  border: '1px solid var(--border, #e5e4e7)',
-  borderRadius: '12px',
-  padding: '20px',
-  background: 'var(--bg, #fff)',
-  cursor: 'pointer',
-  transition: 'box-shadow 0.15s, transform 0.15s',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '8px',
-}
-
-const skeletonStyle: React.CSSProperties = {
-  border: '1px solid var(--border, #e5e4e7)',
-  borderRadius: '12px',
-  padding: '20px',
-  background: 'var(--bg, #fff)',
-  height: '160px',
-  animation: 'pulse 1.5s ease-in-out infinite',
-}
-
-const filterBarStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: '12px',
-  marginBottom: '20px',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-}
-
-const filterLabelStyle: React.CSSProperties = {
-  fontSize: '13px',
-  fontWeight: 500,
-  color: 'var(--text, #6b6375)',
-}
-
-const selectStyle: React.CSSProperties = {
-  padding: '6px 12px',
-  borderRadius: '8px',
-  border: '1px solid var(--border, #e5e4e7)',
-  fontSize: '13px',
-  background: 'var(--bg, #fff)',
-  color: 'var(--text-h, #08060d)',
-}
-
-const emptyStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '60px 20px',
-  color: 'var(--text, #6b6375)',
-}
-
-const errorStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '40px 20px',
-  color: '#ef4444',
-  background: '#fef2f2',
-  borderRadius: '12px',
-  border: '1px solid #fecaca',
-}
-
 // ── Skeleton card ─────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
-  return <div data-testid="nft-skeleton" style={skeletonStyle} />
+  return <div data-testid="nft-skeleton" className={styles.skeleton} />
 }
 
 // ── NFT Card ──────────────────────────────────────────────────────────────────
@@ -94,7 +28,7 @@ interface NFTCardProps {
 function NFTCard({ nft, onSelect }: NFTCardProps) {
   return (
     <article
-      style={cardStyle}
+      className={styles.card}
       onClick={() => onSelect(nft)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -106,13 +40,13 @@ function NFTCard({ nft, onSelect }: NFTCardProps) {
       role="button"
       aria-label={`NFT #${nft.tokenId} from ${nft.companyName ?? 'unknown company'}`}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--text-h, #08060d)' }}>
+      <div className={styles.cardHeader}>
+        <span className={styles.tokenId}>
           #{nft.tokenId.toString()}
         </span>
         <RecognitionBadge value={Number(nft.tokenId)} />
       </div>
-      <span style={{ fontSize: '13px', color: 'var(--text, #6b6375)' }}>
+      <span className={styles.companyName}>
         {nft.companyName ?? 'Unknown Company'}
       </span>
     </article>
@@ -133,13 +67,13 @@ interface FilterBarProps {
 
 function FilterBar({ companies, filter, onChange }: FilterBarProps) {
   return (
-    <div style={filterBarStyle}>
-      <label style={filterLabelStyle} htmlFor="company-filter">
+    <div className={styles.filterBar}>
+      <label className={styles.filterLabel} htmlFor="company-filter">
         Company
       </label>
       <select
         id="company-filter"
-        style={selectStyle}
+        className={styles.select}
         value={filter.company}
         onChange={(e) => onChange({ ...filter, company: e.target.value })}
         aria-label="Filter by company"
@@ -190,7 +124,7 @@ export function NFTGallery({ nfts, isLoading, error, onSelect }: NFTGalleryProps
   // Loading state
   if (isLoading) {
     return (
-      <div style={gridStyle}>
+      <div className={styles.grid}>
         {Array.from({ length: 6 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
@@ -201,9 +135,9 @@ export function NFTGallery({ nfts, isLoading, error, onSelect }: NFTGalleryProps
   // Error state
   if (error) {
     return (
-      <div style={errorStyle} role="alert">
-        <p style={{ fontWeight: 600, marginBottom: '4px' }}>Failed to load NFTs</p>
-        <p style={{ fontSize: '13px' }}>{error.message}</p>
+      <div className={styles.error} role="alert">
+        <p className={styles.errorTitle}>Failed to load NFTs</p>
+        <p className={styles.errorMessage}>{error.message}</p>
       </div>
     )
   }
@@ -211,11 +145,11 @@ export function NFTGallery({ nfts, isLoading, error, onSelect }: NFTGalleryProps
   // Empty state
   if (nfts.length === 0) {
     return (
-      <div style={emptyStyle}>
-        <p style={{ fontWeight: 600, fontSize: '16px', marginBottom: '4px' }}>
+      <div className={styles.empty}>
+        <p className={styles.emptyTitle}>
           No recognition NFTs yet
         </p>
-        <p style={{ fontSize: '13px' }}>
+        <p className={styles.emptyDescription}>
           Your recognition NFTs will appear here once you receive them.
         </p>
       </div>
@@ -231,7 +165,7 @@ export function NFTGallery({ nfts, isLoading, error, onSelect }: NFTGalleryProps
           onChange={setFilter}
         />
       )}
-      <div style={gridStyle}>
+      <div className={styles.grid}>
         {filteredNfts.map((nft) => (
           <NFTCard key={nft.tokenId.toString()} nft={nft} onSelect={onSelect} />
         ))}

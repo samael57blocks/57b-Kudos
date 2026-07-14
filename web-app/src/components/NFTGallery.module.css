@@ -1,0 +1,100 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--bg, #fff);
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tokenId {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-h, #08060d);
+}
+
+.companyName {
+  font-size: 13px;
+  color: var(--text, #6b6375);
+}
+
+.skeleton {
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--bg, #fff);
+  height: 160px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.filterBar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filterLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #6b6375);
+}
+
+.select {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e5e4e7);
+  font-size: 13px;
+  background: var(--bg, #fff);
+  color: var(--text-h, #08060d);
+}
+
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text, #6b6375);
+}
+
+.emptyTitle {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.emptyDescription {
+  font-size: 13px;
+}
+
+.error {
+  text-align: center;
+  padding: 40px 20px;
+  color: #ef4444;
+  background: #fef2f2;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+}
+
+.errorTitle {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.errorMessage {
+  font-size: 13px;
+}
