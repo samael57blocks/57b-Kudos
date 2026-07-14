@@ -4,55 +4,7 @@ import { Layout } from '../components/Layout'
 import { MintNFTForm } from '../components/MintNFTForm'
 import { NFTTable } from '../components/NFTTable'
 import { EmployeeList } from '../components/EmployeeList'
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const containerStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '24px',
-}
-
-const titleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: '22px',
-  fontWeight: 700,
-  color: 'var(--text-h, #08060d)',
-}
-
-const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '380px 1fr',
-  gap: '24px',
-  alignItems: 'start',
-}
-
-const rightColumnStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '24px',
-}
-
-const emptyStyle: React.CSSProperties = {
-  textAlign: 'center',
-  marginTop: '80px',
-  color: 'var(--text, #6b6375)',
-}
-
-const loadingStyle: React.CSSProperties = {
-  textAlign: 'center',
-  marginTop: '80px',
-  color: 'var(--text, #6b6375)',
-}
-
-// Responsive grid: stack columns on narrow screens
-const RESPONSIVE_CSS = `
-@media (max-width: 900px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-`
+import styles from './CompanyDashboard.module.css'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -65,7 +17,7 @@ export function CompanyDashboard() {
   if (!isConnected) {
     return (
       <Layout>
-        <div style={emptyStyle}>
+        <div className={styles.empty}>
           <p>Connect your wallet to access the dashboard.</p>
         </div>
       </Layout>
@@ -77,7 +29,7 @@ export function CompanyDashboard() {
   if (isLoading) {
     return (
       <Layout>
-        <div style={loadingStyle}>
+        <div className={styles.loading}>
           <p>Loading dashboard…</p>
         </div>
       </Layout>
@@ -89,7 +41,7 @@ export function CompanyDashboard() {
   if (!companyId) {
     return (
       <Layout>
-        <div style={emptyStyle}>
+        <div className={styles.empty}>
           <p>You are not registered as a company admin</p>
         </div>
       </Layout>
@@ -100,19 +52,17 @@ export function CompanyDashboard() {
 
   return (
     <Layout>
-      <div style={containerStyle}>
-        <style>{RESPONSIVE_CSS}</style>
+      <div className={styles.container}>
+        <h1 className={styles.title}>Company Dashboard</h1>
 
-        <h1 style={titleStyle}>Company Dashboard</h1>
-
-        <div className="dashboard-grid" style={gridStyle}>
+        <div className={styles.dashboardGrid}>
           {/* Left Column: Form */}
           <div>
             <MintNFTForm companyId={companyId} />
           </div>
 
           {/* Right Column: Tables */}
-          <div style={rightColumnStyle}>
+          <div className={styles.rightColumn}>
             <NFTTable companyId={companyId} />
             <EmployeeList companyId={companyId} />
           </div>

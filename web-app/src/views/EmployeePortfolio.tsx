@@ -5,28 +5,7 @@ import { NFTGallery } from '../components/NFTGallery'
 import { NFTDetail } from '../components/NFTDetail'
 import { useEmployeeNFTs } from '../hooks/useEmployeeNFTs'
 import type { EmployeeNFTData } from '../hooks/useEmployeeNFTs'
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const wrapperStyle: React.CSSProperties = {
-  maxWidth: '960px',
-  margin: '0 auto',
-}
-
-const connectMessageStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '80px 20px',
-  color: 'var(--text, #6b6375)',
-}
-
-const connectHeadingStyle: React.CSSProperties = {
-  fontSize: '20px',
-  fontWeight: 600,
-  color: 'var(--text-h, #08060d)',
-  marginBottom: '8px',
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
+import styles from './EmployeePortfolio.module.css'
 
 /**
  * Employee-facing view that displays all recognition NFTs owned by the
@@ -44,9 +23,9 @@ export function EmployeePortfolio() {
   if (!isConnected || !address) {
     return (
       <Layout>
-        <div style={connectMessageStyle}>
-          <p style={connectHeadingStyle}>Connect your wallet to view your portfolio</p>
-          <p style={{ fontSize: '14px' }}>
+        <div className={styles.connectMessage}>
+          <p className={styles.connectHeading}>Connect your wallet to view your portfolio</p>
+          <p className={styles.smallText}>
             Your recognition NFTs will appear here once you connect.
           </p>
         </div>
@@ -56,9 +35,9 @@ export function EmployeePortfolio() {
 
   return (
     <Layout>
-      <div style={wrapperStyle}>
-        <h1 style={{ fontSize: '24px', marginBottom: '4px' }}>My Portfolio</h1>
-        <p style={{ color: 'var(--text, #6b6375)', fontSize: '14px', marginBottom: '24px' }}>
+      <div className={styles.wrapper}>
+        <h1 className={styles.titleLine}>My Portfolio</h1>
+        <p className={styles.subtitle}>
           Recognition NFTs you have received
         </p>
 
