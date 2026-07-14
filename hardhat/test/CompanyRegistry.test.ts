@@ -361,4 +361,403 @@ describe("CompanyRegistry", function () {
       expect(Number(company.createdAt)).to.be.gt(0);
     });
   });
+
+  // ══════════════════════════════════════════════════════
+  //  MINTER_ROLE — grantMinterRole
+  // ══════════════════════════════════════════════════════
+
+  describe("MINTER_ROLE — grantMinterRole", function () {
+    async function minterFixture() {
+      const fixture = await deployFixture();
+      const { registry, owner, companyAdmin, minterWallet } = fixture;
+
+      // Register company and employees
+      await registry.write.registerCompany(
+        ["ACME Corp", companyAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.registerEmployee([0n], {
+        account: minterWallet.account,
+      });
+
+      return fixture;
+    }
+
+    it("grant-Happy: DEFAULT_ADMIN can grant MINTER_ROLE", async function () {
+      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
+
+      await registry.write.grantMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+
+      const hasRole = await registry.read.hasRole([
+        (await registry.read.MINTER_ROLE()),
+        minterWallet.account.address,
+      ]);
+      expect(hasRole).to.be.true;
+    });
+
+    it("grant-Happy: company admin can grant MINTER_ROLE to their employee", async function () {
+      const { registry, companyAdmin, minterWallet } = await loadFixture(minterFixture);
+
+      await registry.write.grantMinterRole([minterWallet.account.address], {
+        account: companyAdmin.account,
+      });
+
+      const hasRole = await registry.read.hasRole([
+        (await registry.read.MINTER_ROLE()),
+        minterWallet.account.address,
+      ]);
+      expect(hasRole).to.be.true;
+    });
+
+    it("grant-Happy: emits MinterRoleGranted event", async function () {
+      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
+
+      const txHash = await registry.write.grantMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+
+      const publicClient = await hre.viem.getPublicClient();
+      const logs = await publicClient.getLogs({
+        address: registry.address,
+        fromBlock: 0n,
+        event: {
+          type: 'event',
+          name: 'MinterRoleGranted',
+          inputs: [
+            { type: 'uint256', name: 'companyId', indexed: true },
+            { type: 'address', name: 'employee', indexed: true },
+          ],
+        },
+      });
+
+      expect(logs.length).to.equal(1);
+      expect(logs[0].args.companyId).to.equal(0n);
+      expect(getAddress(logs[0].args.employee)).to.equal(
+        getAddress(minterWallet.account.address)
+      );
+    });
+
+    it("grant-Error: non-admin/non-company-admin reverts", async function () {
+      const { registry, other, minterWallet } = await loadFixture(minterFixture);
+
+      await expectRevertWithError(
+        () =>
+          registry.write.grantMinterRole([minterWallet.account.address], {
+            account: other.account,
+          }),
+        registry.abi,
+        "OnlyCompanyAdminOrAdmin"
+      );
+    });
+
+    it("grant-Error: reverts for unregistered employee", async function () {
+      const { registry, owner, other } = await loadFixture(minterFixture);
+
+      await expectRevertWithError(
+        () =>
+          registry.write.grantMinterRole([other.account.address], {
+            account: owner.account,
+          }),
+        registry.abi,
+        "EmployeeNotRegistered"
+      );
+    });
+  });
+
+  // ══════════════════════════════════════════════════════
+  //  MINTER_ROLE — revokeMinterRole
+  // ══════════════════════════════════════════════════════
+
+  describe("MINTER_ROLE — revokeMinterRole", function () {
+    async function minterFixture() {
+      const fixture = await deployFixture();
+      const { registry, owner, companyAdmin, minterWallet } = fixture;
+
+      await registry.write.registerCompany(
+        ["ACME Corp", companyAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.registerEmployee([0n], {
+        account: minterWallet.account,
+      });
+
+      // Grant first
+      await registry.write.grantMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+
+      return fixture;
+    }
+
+    it("revoke-Happy: DEFAULT_ADMIN can revoke MINTER_ROLE", async function () {
+      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
+
+      await registry.write.revokeMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+
+      const hasRole = await registry.read.hasRole([
+        (await registry.read.MINTER_ROLE()),
+        minterWallet.account.address,
+      ]);
+      expect(hasRole).to.be.false;
+    });
+
+    it("revoke-Happy: company admin can revoke MINTER_ROLE from their employee", async function () {
+      const { registry, companyAdmin, minterWallet } = await loadFixture(minterFixture);
+
+      await registry.write.revokeMinterRole([minterWallet.account.address], {
+        account: companyAdmin.account,
+      });
+
+      const hasRole = await registry.read.hasRole([
+        (await registry.read.MINTER_ROLE()),
+        minterWallet.account.address,
+      ]);
+      expect(hasRole).to.be.false;
+    });
+
+    it("revoke-Happy: emits MinterRoleRevoked event", async function () {
+      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
+
+      const txHash = await registry.write.revokeMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+
+      const publicClient = await hre.viem.getPublicClient();
+      const logs = await publicClient.getLogs({
+        address: registry.address,
+        fromBlock: 0n,
+        event: {
+          type: 'event',
+          name: 'MinterRoleRevoked',
+          inputs: [
+            { type: 'uint256', name: 'companyId', indexed: true },
+            { type: 'address', name: 'employee', indexed: true },
+          ],
+        },
+      });
+
+      expect(logs.length).to.equal(1);
+      expect(logs[0].args.companyId).to.equal(0n);
+      expect(getAddress(logs[0].args.employee)).to.equal(
+        getAddress(minterWallet.account.address)
+      );
+    });
+
+    it("revoke-Error: non-admin/non-company-admin reverts", async function () {
+      const { registry, other, minterWallet } = await loadFixture(minterFixture);
+
+      await expectRevertWithError(
+        () =>
+          registry.write.revokeMinterRole([minterWallet.account.address], {
+            account: other.account,
+          }),
+        registry.abi,
+        "OnlyCompanyAdminOrAdmin"
+      );
+    });
+
+    it("revoke-Error: reverts for unregistered employee", async function () {
+      const { registry, owner, other } = await loadFixture(minterFixture);
+
+      await expectRevertWithError(
+        () =>
+          registry.write.revokeMinterRole([other.account.address], {
+            account: owner.account,
+          }),
+        registry.abi,
+        "EmployeeNotRegistered"
+      );
+    });
+  });
+
+  // ══════════════════════════════════════════════════════
+  //  hasMinterRole
+  // ══════════════════════════════════════════════════════
+
+  describe("hasMinterRole", function () {
+    async function minterFixture() {
+      const fixture = await deployFixture();
+      const { registry, owner, companyAdmin, minterWallet } = fixture;
+
+      await registry.write.registerCompany(
+        ["ACME Corp", companyAdmin.account.address],
+        { account: owner.account }
+      );
+      await registry.write.registerEmployee([0n], {
+        account: minterWallet.account,
+      });
+
+      return fixture;
+    }
+
+    it("hasMinterRole-Happy: returns true when MINTER_ROLE is granted", async function () {
+      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
+
+      await registry.write.grantMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+
+      const result = await registry.read.hasMinterRole([minterWallet.account.address]);
+      expect(result).to.be.true;
+    });
+
+    it("hasMinterRole-Happy: returns false when MINTER_ROLE is not granted", async function () {
+      const { registry, minterWallet } = await loadFixture(minterFixture);
+
+      const result = await registry.read.hasMinterRole([minterWallet.account.address]);
+      expect(result).to.be.false;
+    });
+
+    it("hasMinterRole-Happy: returns false after MINTER_ROLE is revoked", async function () {
+      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
+
+      await registry.write.grantMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+      expect(await registry.read.hasMinterRole([minterWallet.account.address])).to.be.true;
+
+      await registry.write.revokeMinterRole([minterWallet.account.address], {
+        account: owner.account,
+      });
+      expect(await registry.read.hasMinterRole([minterWallet.account.address])).to.be.false;
+    });
+  });
+
+  // ══════════════════════════════════════════════════════
+  //  mintKudos
+  // ══════════════════════════════════════════════════════
+
+  describe("mintKudos", function () {
+    async function mintFixture() {
+      const fixture = await deployFixture();
+      const { nft, registry, owner, companyAdmin, minterWallet, anotherWallet } = fixture;
+
+      // Register company
+      await registry.write.registerCompany(
+        ["ACME Corp", companyAdmin.account.address],
+        { account: owner.account }
+      );
+
+      // Register two employees
+      await registry.write.registerEmployee([0n], {
+        account: minterWallet.account,
+      });
+      await registry.write.registerEmployee([0n], {
+        account: anotherWallet.account,
+      });
+
+      // Grant minter role
+      await registry.write.grantMinterRole([minterWallet.account.address], {
+        account: companyAdmin.account,
+      });
+
+      // Set CompanyRegistry on NFT57B so safeMint works
+      await nft.write.setCompanyRegistry([registry.address], {
+        account: owner.account,
+      });
+
+      return fixture;
+    }
+
+    it("mint-Happy: minter can mint Kudos to same-company employee", async function () {
+      const { registry, nft, minterWallet, anotherWallet } = await loadFixture(mintFixture);
+
+      await registry.write.mintKudos(
+        [anotherWallet.account.address, "ipfs://token-uri-1"],
+        { account: minterWallet.account }
+      );
+
+      // Verify NFT was minted — token ID 0
+      const tokenOwner = await nft.read.ownerOf([0n]);
+      expect(getAddress(tokenOwner)).to.equal(getAddress(anotherWallet.account.address));
+    });
+
+    it("mint-Happy: emits KudosMinted event with correct args", async function () {
+      const { registry, minterWallet, anotherWallet } = await loadFixture(mintFixture);
+
+      const txHash = await registry.write.mintKudos(
+        [anotherWallet.account.address, "ipfs://token-uri-2"],
+        { account: minterWallet.account }
+      );
+
+      const publicClient = await hre.viem.getPublicClient();
+      const logs = await publicClient.getLogs({
+        address: registry.address,
+        fromBlock: 0n,
+        event: {
+          type: 'event',
+          name: 'KudosMinted',
+          inputs: [
+            { type: 'uint256', name: 'tokenId', indexed: true },
+            { type: 'uint256', name: 'companyId', indexed: true },
+            { type: 'address', name: 'employee', indexed: true },
+            { type: 'address', name: 'minter', indexed: false },
+          ],
+        },
+      });
+
+      expect(logs.length).to.equal(1);
+      expect(logs[0].args.tokenId).to.equal(0n);
+      expect(logs[0].args.companyId).to.equal(0n);
+      expect(getAddress(logs[0].args.employee)).to.equal(
+        getAddress(anotherWallet.account.address)
+      );
+    });
+
+    it("mint-Error: non-minter reverts with AccessControl", async function () {
+      const { registry, anotherWallet } = await loadFixture(mintFixture);
+
+      await expectRevertWithError(
+        () =>
+          registry.write.mintKudos(
+            [anotherWallet.account.address, "ipfs://token-uri"],
+            { account: anotherWallet.account }
+          ),
+        registry.abi,
+        "AccessControlUnauthorizedAccount"
+      );
+    });
+
+    it("mint-Error: reverts when employee is not registered", async function () {
+      const { registry, owner, minterWallet, other } = await loadFixture(mintFixture);
+
+      await expectRevertWithError(
+        () =>
+          registry.write.mintKudos(
+            [other.account.address, "ipfs://token-uri"],
+            { account: minterWallet.account }
+          ),
+        registry.abi,
+        "EmployeeNotRegistered"
+      );
+    });
+
+    it("mint-Error: reverts when minter and employee are in different companies", async function () {
+      const { registry, owner, minterWallet, other } = await loadFixture(mintFixture);
+
+      // Register second company with 'other' as admin and employee
+      await registry.write.registerCompany(
+        ["Tech Inc", other.account.address],
+        { account: owner.account }
+      );
+      await registry.write.registerEmployee([1n], {
+        account: other.account,
+      });
+
+      // minterWallet is in company 0, other is in company 1
+      await expectRevertWithError(
+        () =>
+          registry.write.mintKudos(
+            [other.account.address, "ipfs://token-uri"],
+            { account: minterWallet.account }
+          ),
+        registry.abi,
+        "NotSameCompany"
+      );
+    });
+  });
 });

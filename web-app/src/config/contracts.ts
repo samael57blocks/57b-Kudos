@@ -66,10 +66,19 @@ export const COMPANY_REGISTRY_ABI = parseAbi([
   'function registerCompany(string calldata name, address adminWallet) external returns (uint256 companyId)',
   'function registerEmployee(uint256 companyId) external',
   'function recognize(address employee, string calldata uri) external returns (uint256 tokenId)',
+  // AccessControl
+  'function MINTER_ROLE() external pure returns (bytes32)',
+  'function grantMinterRole(address account) external',
+  'function revokeMinterRole(address account) external',
+  'function mintKudos(address to, string calldata uri) external returns (uint256)',
+  'function hasRole(bytes32 role, address account) external view returns (bool)',
   // Events
   'event CompanyRegistered(uint256 indexed companyId, string name, address indexed admin)',
   'event EmployeeRegistered(uint256 indexed companyId, address indexed employee)',
   'event Recognized(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee)',
+  'event MinterRoleGranted(uint256 indexed companyId, address indexed employee)',
+  'event MinterRoleRevoked(uint256 indexed companyId, address indexed employee)',
+  'event KudosMinted(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee, address minter)',
 ])
 
 export const RECOGNITION_TOKEN_ABI = parseAbi([

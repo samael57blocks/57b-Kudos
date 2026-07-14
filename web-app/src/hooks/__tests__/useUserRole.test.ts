@@ -31,12 +31,13 @@ describe('useUserRole — companyAdmin promotion', () => {
   })
 
   it('returns company_admin when companyAdmin=true and role is visitor', async () => {
-    // Defaults: no admin role, no employee
+    // Defaults: no admin role, no employee, no minter
     mockReadContractSequence([
       { data: undefined as `0x${string}` | undefined, isFetching: false }, // DEFAULT_ADMIN_ROLE
-      { data: false, isFetching: false }, // hasRole
+      { data: false, isFetching: false }, // hasRole (admin)
       { data: undefined, isFetching: false }, // getEmployeeCompany
       { data: false, isFetching: false }, // isEmployee
+      { data: false, isFetching: false }, // hasRole (minter)
     ])
     const { result } = renderHook(() => useUserRole({ companyAdmin: true }))
 
@@ -51,6 +52,7 @@ describe('useUserRole — companyAdmin promotion', () => {
       { data: true, isFetching: false }, // hasRole = admin
       { data: undefined, isFetching: false }, // getEmployeeCompany
       { data: false, isFetching: false }, // isEmployee
+      { data: false, isFetching: false }, // hasRole (minter)
     ])
     const { result } = renderHook(() => useUserRole({ companyAdmin: true }))
 
@@ -62,9 +64,10 @@ describe('useUserRole — companyAdmin promotion', () => {
   it('returns employee when companyAdmin=true but user is an employee', async () => {
     mockReadContractSequence([
       { data: undefined as `0x${string}` | undefined, isFetching: false }, // DEFAULT_ADMIN_ROLE
-      { data: false, isFetching: false }, // hasRole
+      { data: false, isFetching: false }, // hasRole (admin)
       { data: 5n, isFetching: false }, // getEmployeeCompany = 5
       { data: true, isFetching: false }, // isEmployee
+      { data: false, isFetching: false }, // hasRole (minter)
     ])
     const { result } = renderHook(() => useUserRole({ companyAdmin: true }))
 
@@ -79,6 +82,7 @@ describe('useUserRole — companyAdmin promotion', () => {
       { data: false, isFetching: false },
       { data: undefined, isFetching: false },
       { data: false, isFetching: false },
+      { data: false, isFetching: false }, // hasRole (minter)
     ])
     const { result } = renderHook(() => useUserRole({ companyAdmin: false }))
 
@@ -93,11 +97,27 @@ describe('useUserRole — companyAdmin promotion', () => {
       { data: false, isFetching: false },
       { data: undefined, isFetching: false },
       { data: false, isFetching: false },
+      { data: false, isFetching: false }, // hasRole (minter)
     ])
     const { result } = renderHook(() => useUserRole())
 
     await waitFor(() => {
       expect(result.current.role).toBe('visitor')
+    })
+  })
+
+  it('returns minter when hasRole(MINTER_ROLE) is true', async () => {
+    mockReadContractSequence([
+      { data: undefined as `0x${string}` | undefined, isFetching: false }, // DEFAULT_ADMIN_ROLE
+      { data: false, isFetching: false }, // hasRole (admin)
+      { data: 3n, isFetching: false }, // getEmployeeCompany = 3
+      { data: true, isFetching: false }, // isEmployee
+      { data: true, isFetching: false }, // hasRole (minter) = true
+    ])
+    const { result } = renderHook(() => useUserRole())
+
+    await waitFor(() => {
+      expect(result.current.role).toBe('minter')
     })
   })
 })
