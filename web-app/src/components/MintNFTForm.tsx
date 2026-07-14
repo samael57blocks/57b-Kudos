@@ -7,6 +7,15 @@ import {
   COMPANY_REGISTRY_ABI,
   getContractAddresses,
 } from '../config/contracts'
+import { buildExplorerTxUrl } from '../utils/format'
+import {
+  labelStyle,
+  inputStyle,
+  buttonStyle,
+  buttonDisabledStyle,
+  errorStyle,
+  linkStyle,
+} from '../styles/tokens'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,57 +35,10 @@ const formStyle: React.CSSProperties = {
   background: 'var(--bg, #fff)',
 }
 
-const labelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '4px',
-  fontSize: '13px',
-  fontWeight: 600,
-  color: 'var(--text-h, #08060d)',
-}
-
-const inputStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  fontSize: '14px',
-  border: '1px solid var(--border, #e5e4e7)',
-  borderRadius: '6px',
-  background: 'var(--bg, #fff)',
-  color: 'var(--text, #08060d)',
-}
-
 const textareaStyle: React.CSSProperties = {
   ...inputStyle,
   minHeight: '80px',
   resize: 'vertical',
-}
-
-const errorStyle: React.CSSProperties = {
-  fontSize: '12px',
-  color: '#e53e3e',
-  marginTop: '2px',
-}
-
-const buttonStyle: React.CSSProperties = {
-  padding: '10px 20px',
-  fontSize: '14px',
-  fontWeight: 600,
-  border: 'none',
-  borderRadius: '6px',
-  cursor: 'pointer',
-  background: 'var(--accent, #aa3bff)',
-  color: '#fff',
-}
-
-const buttonDisabledStyle: React.CSSProperties = {
-  ...buttonStyle,
-  opacity: 0.5,
-  cursor: 'not-allowed',
-}
-
-const linkStyle: React.CSSProperties = {
-  fontSize: '13px',
-  color: 'var(--accent, #aa3bff)',
-  textDecoration: 'underline',
 }
 
 const successStyle: React.CSSProperties = {
@@ -220,12 +182,7 @@ export function MintNFTForm({ companyId }: MintNFTFormProps) {
 
   const isInFlight = step === 'uploading' || step === 'confirming' || imageUploading
   const isFormDisabled = isInFlight
-  const explorerUrl =
-    txHash && import.meta.env.VITE_BLOCK_EXPLORER_URL
-      ? `${import.meta.env.VITE_BLOCK_EXPLORER_URL}${txHash}`
-      : txHash
-        ? `https://etherscan.io/tx/${txHash}`
-        : undefined
+  const explorerUrl = buildExplorerTxUrl(txHash, import.meta.env.VITE_BLOCK_EXPLORER_URL)
 
   // ── Render ───────────────────────────────────────────────────────────────
 

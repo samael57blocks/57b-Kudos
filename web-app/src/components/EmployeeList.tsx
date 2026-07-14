@@ -1,5 +1,7 @@
 import { useCompanyEmployees, type EmployeeData } from '../hooks/useCompanyEmployees'
 import { useMinterRole } from '../hooks/useMinterRole'
+import { formatAddress } from '../utils/format'
+import { skeletonStyle } from '../styles/tokens'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -61,13 +63,6 @@ const monoStyle: React.CSSProperties = {
   fontSize: '12px',
 }
 
-const skeletonStyle: React.CSSProperties = {
-  height: '16px',
-  background: '#f0f0f5',
-  borderRadius: '4px',
-  animation: 'pulse 1.5s ease-in-out infinite',
-}
-
 const emptyStyle: React.CSSProperties = {
   textAlign: 'center',
   padding: '32px',
@@ -106,12 +101,6 @@ const minterLoadingStyle: React.CSSProperties = {
 const minterColumnStyle: React.CSSProperties = {
   ...tdStyle,
   textAlign: 'center',
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatAddress(address: `0x${string}`): string {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
 // ── EmployeeRow sub-component ─────────────────────────────────────────────────

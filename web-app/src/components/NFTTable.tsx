@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useCompanyNFTs } from '../hooks/useCompanyNFTs'
 import { useTokenMetadata } from '../hooks/useTokenMetadata'
 import type { NFTData } from '../hooks/useCompanyNFTs'
+import { formatAddress } from '../utils/format'
+import { gatewayURL } from '../utils/ipfs'
+import { skeletonStyle } from '../styles/tokens'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,13 +61,6 @@ const filterInputStyle: React.CSSProperties = {
   width: '140px',
 }
 
-const skeletonStyle: React.CSSProperties = {
-  height: '16px',
-  background: 'var(--bg-subtle, #f0f0f5)',
-  borderRadius: '4px',
-  animation: 'pulse 1.5s ease-in-out infinite',
-}
-
 const emptyStyle: React.CSSProperties = {
   textAlign: 'center',
   padding: '40px 20px',
@@ -82,18 +78,6 @@ const linkStyle: React.CSSProperties = {
   color: 'var(--accent, #aa3bff)',
   textDecoration: 'underline',
   fontSize: '12px',
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function truncateAddress(addr: `0x${string}`): string {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
-}
-
-function buildGatewayURL(uri: string): string {
-  const cid = uri.replace('ipfs://', '')
-  const gateway = import.meta.env.VITE_IPFS_GATEWAY ?? 'https://gateway.pinata.cloud'
-  return `${gateway}/ipfs/${cid}`
 }
 
 // ── NFTTableRow sub-component ─────────────────────────────────────────────────
@@ -120,7 +104,7 @@ function NFTTableRow({ nft }: { nft: NFTData }) {
   return (
     <tr>
       <td style={tdStyle}>#{nft.tokenId.toString()}</td>
-      <td style={tdStyle}>{truncateAddress(nft.employee)}</td>
+      <td style={tdStyle}>{formatAddress(nft.employee)}</td>
       <td style={tdStyle}>
         {isLoading ? (
           <div style={{ ...skeletonStyle, width: '60px' }} />
@@ -138,7 +122,7 @@ function NFTTableRow({ nft }: { nft: NFTData }) {
       <td style={tdStyle}>
         {nft.tokenURI ? (
           <a
-            href={buildGatewayURL(nft.tokenURI)}
+            href={gatewayURL(nft.tokenURI.replace('ipfs://', ''))}
             target="_blank"
             rel="noopener noreferrer"
             style={linkStyle}
