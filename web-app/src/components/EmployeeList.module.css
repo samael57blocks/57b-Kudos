@@ -1,0 +1,127 @@
+/* Token classes absorbed from src/styles/tokens.ts */
+
+.skeleton {
+  height: 16px;
+  background: var(--bg-subtle, #f0f0f5);
+  border-radius: 4px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Component-specific styles */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-h, #08060d);
+}
+
+.refreshButton {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--bg, #fff);
+  color: var(--text, #6b6375);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--border, #e5e4e7);
+  color: var(--text, #6b6375);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #e5e4e7);
+  color: var(--text-h, #08060d);
+}
+
+.mono {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--text, #6b6375);
+  font-size: 14px;
+}
+
+.toggleButton {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.minterActive {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #e6f7e6;
+  color: #38a169;
+}
+
+.minterInactive {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #f0f0f5;
+  color: #6b6375;
+}
+
+.minterLoading {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: not-allowed;
+  transition: all 0.15s;
+  opacity: 0.5;
+}
+
+.minterColumn {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #e5e4e7);
+  color: var(--text-h, #08060d);
+  text-align: center;
+}

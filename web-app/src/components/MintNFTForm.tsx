@@ -8,43 +8,12 @@ import {
   getContractAddresses,
 } from '../config/contracts'
 import { buildExplorerTxUrl } from '../utils/format'
-import {
-  labelStyle,
-  inputStyle,
-  buttonStyle,
-  buttonDisabledStyle,
-  errorStyle,
-  linkStyle,
-} from '../styles/tokens'
+import styles from './MintNFTForm.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface MintNFTFormProps {
   companyId: bigint
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const formStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '16px',
-  padding: '24px',
-  border: '1px solid var(--border, #e5e4e7)',
-  borderRadius: '8px',
-  background: 'var(--bg, #fff)',
-}
-
-const textareaStyle: React.CSSProperties = {
-  ...inputStyle,
-  minHeight: '80px',
-  resize: 'vertical',
-}
-
-const successStyle: React.CSSProperties = {
-  fontSize: '13px',
-  color: '#38a169',
-  fontWeight: 600,
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -187,13 +156,13 @@ export function MintNFTForm({ companyId }: MintNFTFormProps) {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <form onSubmit={handleSubmit} style={formStyle}>
-      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
+    <form onSubmit={handleSubmit} className={styles.form}>
+      <h3 className={styles.title}>
         Mint Recognition NFT
       </h3>
 
       {/* Employee Address */}
-      <label style={labelStyle}>
+      <label className={styles.label}>
         Employee Address
         <input
           type="text"
@@ -201,18 +170,18 @@ export function MintNFTForm({ companyId }: MintNFTFormProps) {
           onChange={(e) => setEmployee(e.target.value)}
           placeholder="0x..."
           disabled={isFormDisabled}
-          style={inputStyle}
+          className={styles.input}
           aria-label="Employee Address"
         />
         {validationErrors.employee && (
-          <span style={errorStyle} role="alert">
+          <span className={styles.error} role="alert">
             {validationErrors.employee}
           </span>
         )}
       </label>
 
       {/* Value */}
-      <label style={labelStyle}>
+      <label className={styles.label}>
         Value (ETH)
         <input
           type="text"
@@ -220,31 +189,31 @@ export function MintNFTForm({ companyId }: MintNFTFormProps) {
           onChange={(e) => setValue(e.target.value)}
           placeholder="0.1"
           disabled={isFormDisabled}
-          style={inputStyle}
+          className={styles.input}
           aria-label="Value (ETH)"
         />
         {validationErrors.value && (
-          <span style={errorStyle} role="alert">
+          <span className={styles.error} role="alert">
             {validationErrors.value}
           </span>
         )}
       </label>
 
       {/* Date */}
-      <label style={labelStyle}>
+      <label className={styles.label}>
         Date
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
           disabled={isFormDisabled}
-          style={inputStyle}
+          className={styles.input}
           aria-label="Date"
         />
       </label>
 
       {/* Comments */}
-      <label style={labelStyle}>
+      <label className={styles.label}>
         Comments
         <textarea
           value={comments}
@@ -252,46 +221,46 @@ export function MintNFTForm({ companyId }: MintNFTFormProps) {
           placeholder="Optional recognition message (max 500 chars)"
           maxLength={500}
           disabled={isFormDisabled}
-          style={textareaStyle}
+          className={styles.textarea}
           aria-label="Comments"
         />
       </label>
 
       {/* Image Upload */}
-      <label style={labelStyle}>
+      <label className={styles.label}>
         Image (optional)
         <input
           type="file"
           accept="image/*"
           onChange={handleImageChange}
           disabled={isFormDisabled}
-          style={inputStyle}
+          className={styles.input}
           aria-label="Image"
         />
       </label>
 
       {/* Status messages */}
       {step === 'confirming' && txHash && explorerUrl && (
-        <p style={linkStyle}>
+        <p className={styles.link}>
           Transaction submitted:{' '}
-          <a href={explorerUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+          <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
             View on Etherscan
           </a>
         </p>
       )}
 
       {step === 'success' && (
-        <p style={successStyle}>NFT minted successfully!</p>
+        <p className={styles.success}>NFT minted successfully!</p>
       )}
 
       {step === 'error' && mintError && (
-        <p style={errorStyle} role="alert">
+        <p className={styles.error} role="alert">
           {mintError.message}
         </p>
       )}
 
       {imageUploading && (
-        <p style={{ fontSize: '13px', color: 'var(--text, #6b6375)' }}>
+        <p className={styles.uploading}>
           Uploading image to IPFS…
         </p>
       )}
@@ -300,7 +269,7 @@ export function MintNFTForm({ companyId }: MintNFTFormProps) {
       <button
         type="submit"
         disabled={isFormDisabled}
-        style={isFormDisabled ? buttonDisabledStyle : buttonStyle}
+        className={isFormDisabled ? styles.buttonDisabled : styles.button}
       >
         {step === 'uploading' || imageUploading
           ? 'Uploading…'

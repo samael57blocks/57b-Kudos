@@ -1,25 +1,6 @@
 import { useWalletConnection } from '../hooks/useWalletConnection'
 import { formatAddress } from '../utils/format'
-
-const buttonStyle: React.CSSProperties = {
-  padding: '8px 16px',
-  borderRadius: '8px',
-  border: '1px solid var(--border, #e5e4e7)',
-  background: 'var(--accent-bg, rgba(170, 59, 255, 0.1))',
-  color: 'var(--accent, #aa3bff)',
-  cursor: 'pointer',
-  font: 'inherit',
-  fontSize: '14px',
-  fontWeight: 500,
-  whiteSpace: 'nowrap',
-}
-
-const connectedStyle: React.CSSProperties = {
-  ...buttonStyle,
-  background: 'var(--code-bg, #f4f3ec)',
-  color: 'var(--text-h, #08060d)',
-  cursor: 'default',
-}
+import styles from './ConnectButton.module.css'
 
 /**
  * Connect / disconnect button that shows the current connection state.
@@ -35,7 +16,7 @@ export function ConnectButton() {
 
   if (isConnecting) {
     return (
-      <button type="button" style={buttonStyle} disabled>
+      <button type="button" className={styles.button} disabled>
         Connecting…
       </button>
     )
@@ -45,7 +26,7 @@ export function ConnectButton() {
     return (
       <button
         type="button"
-        style={connectedStyle}
+        className={styles.connected}
         onClick={(e) => {
           e.stopPropagation()
           disconnect()
@@ -58,7 +39,7 @@ export function ConnectButton() {
   }
 
   return (
-    <button type="button" style={buttonStyle} onClick={connect}>
+    <button type="button" className={styles.button} onClick={connect}>
       Connect Wallet
     </button>
   )

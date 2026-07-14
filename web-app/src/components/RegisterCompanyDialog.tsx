@@ -3,42 +3,7 @@ import { useAccount } from 'wagmi'
 import { Dialog } from './Dialog'
 import { useRegisterCompany } from '../hooks/useRegisterCompany'
 import { buildExplorerTxUrl } from '../utils/format'
-import {
-  labelStyle,
-  inputStyle,
-  buttonStyle,
-  buttonDisabledStyle,
-  errorStyle,
-  linkStyle,
-} from '../styles/tokens'
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const formStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '16px',
-}
-
-const buttonRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: '8px',
-  marginTop: '8px',
-}
-
-const cancelButtonStyle: React.CSSProperties = {
-  ...buttonStyle,
-  background: 'transparent',
-  color: 'var(--text, #6b6375)',
-  border: '1px solid var(--border, #e5e4e7)',
-}
-
-const titleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: '16px',
-  fontWeight: 700,
-}
+import styles from './RegisterCompanyDialog.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -132,11 +97,11 @@ export function RegisterCompanyDialog({
 
   return (
     <Dialog open={open} onClose={handleClose}>
-      <form onSubmit={handleSubmit} style={formStyle}>
-        <h3 style={titleStyle}>Register Company</h3>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <h3 className={styles.title}>Register Company</h3>
 
         {/* Company Name */}
-        <label style={labelStyle}>
+        <label className={styles.label}>
           Company Name
           <input
             type="text"
@@ -144,12 +109,12 @@ export function RegisterCompanyDialog({
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="Enter company name"
             disabled={isFormDisabled}
-            style={inputStyle}
+            className={styles.input}
             aria-label="Company Name"
             autoFocus
           />
           {validationError && (
-            <span style={errorStyle} role="alert">
+            <span className={styles.error} role="alert">
               {validationError}
             </span>
           )}
@@ -157,13 +122,13 @@ export function RegisterCompanyDialog({
 
         {/* Transaction link */}
         {step === 'confirming' && txHash && explorerUrl && (
-          <p style={linkStyle}>
+          <p className={styles.link}>
             Transaction submitted:{' '}
             <a
               href={explorerUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={linkStyle}
+              className={styles.link}
             >
               View on Etherscan
             </a>
@@ -172,25 +137,25 @@ export function RegisterCompanyDialog({
 
         {/* Error message */}
         {step === 'error' && error && (
-          <p style={errorStyle} role="alert">
+          <p className={styles.error} role="alert">
             {error.message}
           </p>
         )}
 
         {/* Actions */}
-        <div style={buttonRowStyle}>
+        <div className={styles.buttonRow}>
           <button
             type="button"
             onClick={handleClose}
             disabled={isFormDisabled}
-            style={isFormDisabled ? buttonDisabledStyle : cancelButtonStyle}
+            className={isFormDisabled ? styles.buttonDisabled : styles.cancelButton}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isFormDisabled}
-            style={isFormDisabled ? buttonDisabledStyle : buttonStyle}
+            className={isFormDisabled ? styles.buttonDisabled : styles.button}
           >
             {isConfirming ? 'Confirming…' : 'Register'}
           </button>
