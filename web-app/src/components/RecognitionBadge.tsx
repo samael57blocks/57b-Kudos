@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import styles from './RecognitionBadge.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -14,19 +15,6 @@ function badgeColor(value: bigint | string | number): string {
   if (num < 10) return '#22c55e' // green
   if (num < 50) return '#f59e0b' // amber
   return '#a855f7' // purple
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const pillStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  padding: '2px 10px',
-  borderRadius: '999px',
-  fontSize: '12px',
-  fontWeight: 600,
-  color: '#fff',
-  lineHeight: '20px',
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -51,5 +39,12 @@ export function RecognitionBadge({
   const bg = value !== undefined ? badgeColor(value) : '#6b7280'
   const text = label ?? String(value)
 
-  return <span style={{ ...pillStyle, backgroundColor: bg }}>{text}</span>
+  return (
+    <span
+      className={styles.pill}
+      style={{ '--badge-color': bg } as React.CSSProperties}
+    >
+      {text}
+    </span>
+  )
 }

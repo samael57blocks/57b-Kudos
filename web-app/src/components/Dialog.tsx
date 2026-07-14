@@ -1,29 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const backdropStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(0, 0, 0, 0.4)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 1000,
-}
-
-const dialogStyle: React.CSSProperties = {
-  background: 'var(--bg, #fff)',
-  borderRadius: '8px',
-  padding: '24px',
-  minWidth: '400px',
-  maxWidth: '480px',
-  width: '100%',
-  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-  outline: 'none',
-  position: 'relative',
-}
+import styles from './Dialog.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -107,7 +84,7 @@ export function Dialog({ open, onClose, children }: DialogProps) {
 
   return createPortal(
     <div
-      style={backdropStyle}
+      className={styles.overlay}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -115,7 +92,7 @@ export function Dialog({ open, onClose, children }: DialogProps) {
     >
       <div
         ref={dialogRef}
-        style={dialogStyle}
+        className={styles.dialog}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         role="document"
