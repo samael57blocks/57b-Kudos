@@ -7,6 +7,7 @@ import { EmployeeList } from '../EmployeeList'
 const mockRefresh = vi.hoisted(() => vi.fn())
 const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
 const mockUseMinterRole = vi.hoisted(() => vi.fn())
+const mockUseRegisterEmployee = vi.hoisted(() => vi.fn())
 
 vi.mock('../../hooks/useCompanyEmployees', () => ({
   useCompanyEmployees: mockUseCompanyEmployees,
@@ -14,6 +15,10 @@ vi.mock('../../hooks/useCompanyEmployees', () => ({
 
 vi.mock('../../hooks/useMinterRole', () => ({
   useMinterRole: mockUseMinterRole,
+}))
+
+vi.mock('../../hooks/useRegisterEmployee', () => ({
+  useRegisterEmployee: mockUseRegisterEmployee,
 }))
 
 // --- Fixtures ---
@@ -65,6 +70,14 @@ describe('EmployeeList', () => {
     vi.clearAllMocks()
     setupEmployeeState()
     setupMinterRoleState()
+    mockUseRegisterEmployee.mockReturnValue({
+      registerEmployee: vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`),
+      step: 'idle',
+      isConfirming: false,
+      txHash: undefined,
+      error: null,
+      reset: vi.fn(),
+    })
   })
 
   it('renders column headers', () => {
@@ -166,5 +179,156 @@ describe('EmployeeList', () => {
     fireEvent.click(revokeButtons[0])
 
     expect(revokeMinter).toHaveBeenCalledTimes(1)
+  })
+
+  // ── Add Employee form ────────────────────────────────────────────────────────
+
+  it('shows Add Employee button only when showMinterToggle is true', () => {
+    renderList(false)
+    expect(screen.queryByText('Add Employee')).not.toBeInTheDocument()
+
+    renderList(true)
+    expect(screen.getByText('Add Employee')).toBeInTheDocument()
+  })
+
+  it('toggles the add form open and closed on button click', () => {
+    renderList(true)
+
+    // Form is collapsed — no input visible
+    expect(screen.queryByPlaceholderText('0x...')).not.toBeInTheDocument()
+
+    // Open form
+    fireEvent.click(screen.getByText('Add Employee'))
+    const input = screen.getByPlaceholderText('0x...')
+    expect(input).toBeInTheDocument()
+
+    // Button text switches to Cancel
+    expect(screen.getByText('Cancel')).toBeInTheDocument()
+
+    // Close form
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(screen.queryByPlaceholderText('0x...')).not.toBeInTheDocument()
+    expect(screen.queryByText('Cancel')).not.toBeInTheDocument()
+  })
+
+  it('disables the Add button when address is empty or invalid', () => {
+    renderList(true)
+    fireEvent.click(screen.getByText('Add Employee'))
+
+    const addButton = screen.getByRole('button', { name: 'Add' })
+    expect(addButton).toBeDisabled()
+
+    // Partial address — still invalid
+    fireEvent.change(screen.getByPlaceholderText('0x...'), {
+      target: { value: '0xabc' },
+    })
+    expect(addButton).toBeDisabled()
+
+    // Wrong length (41 chars)
+    fireEvent.change(screen.getByPlaceholderText('0x...'), {
+      target: { value: '0x' + 'a'.repeat(39) },
+    })
+    expect(addButton).toBeDisabled()
+  })
+
+  it('enables the Add button when address is valid (0x + 40 hex chars)', () => {
+    renderList(true)
+    fireEvent.click(screen.getByText('Add Employee'))
+
+    const validAddr = '0x' + 'abCD1234'.repeat(5) // 40 hex chars
+    fireEvent.change(screen.getByPlaceholderText('0x...'), {
+      target: { value: validAddr },
+    })
+
+    expect(screen.getByRole('button', { name: 'Add' })).not.toBeDisabled()
+  })
+
+  it('calls registerEmployee with address and companyId on valid submit', async () => {
+    const registerEmployee = vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`)
+    mockUseRegisterEmployee.mockReturnValue({
+      registerEmployee,
+      step: 'idle',
+      isConfirming: false,
+      txHash: undefined,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderList(true)
+    fireEvent.click(screen.getByText('Add Employee'))
+
+    const validAddr = '0x' + 'ab'.repeat(20)
+    fireEvent.change(screen.getByPlaceholderText('0x...'), {
+      target: { value: validAddr },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    await vi.waitFor(() => {
+      expect(registerEmployee).toHaveBeenCalledWith(validAddr, COMPANY_ID)
+    })
+  })
+
+  it('collapses form, clears input, and calls refresh after successful add', async () => {
+    const registerEmployee = vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`)
+    mockUseRegisterEmployee.mockReturnValue({
+      registerEmployee,
+      step: 'idle',
+      isConfirming: false,
+      txHash: undefined,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderList(true)
+    fireEvent.click(screen.getByText('Add Employee'))
+
+    const validAddr = '0x' + 'ab'.repeat(20)
+    fireEvent.change(screen.getByPlaceholderText('0x...'), {
+      target: { value: validAddr },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    await vi.waitFor(() => {
+      // Form collapsed: input gone, button back to "Add Employee"
+      expect(screen.queryByPlaceholderText('0x...')).not.toBeInTheDocument()
+      expect(screen.getByText('Add Employee')).toBeInTheDocument()
+      expect(mockRefresh).toHaveBeenCalled()
+    })
+  })
+
+  it('displays error message below input when addEmployee fails', () => {
+    mockUseRegisterEmployee.mockReturnValue({
+      registerEmployee: vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`),
+      step: 'idle',
+      isConfirming: false,
+      txHash: undefined,
+      error: new Error('Already registered'),
+      reset: vi.fn(),
+    })
+
+    renderList(true)
+    fireEvent.click(screen.getByText('Add Employee'))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Already registered')
+  })
+
+  it('shows loading state on Add button and disables input during confirmation', () => {
+    mockUseRegisterEmployee.mockReturnValue({
+      registerEmployee: vi.fn(),
+      step: 'confirming',
+      isConfirming: true,
+      txHash: '0xHash' as `0x${string}`,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderList(true)
+    fireEvent.click(screen.getByText('Add Employee'))
+
+    const input = screen.getByPlaceholderText('0x...')
+    expect(input).toBeDisabled()
+
+    const addButton = screen.getByRole('button', { name: '...' })
+    expect(addButton).toBeDisabled()
   })
 })

@@ -145,8 +145,8 @@ describe("RewardsIntegration", function () {
       );
 
       // ── Step 2: Register employee ──
-      await registry.write.registerEmployee([0n], {
-        account: employee.account,
+      await registry.write.registerEmployee([employee.account.address, 0n], {
+        account: companyAdmin.account,
       });
 
       // ── Step 3: Recognize (companyAdmin calls registry.recognize()) ──
@@ -227,8 +227,8 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([0n], {
-        account: employee.account,
+      await registry.write.registerEmployee([employee.account.address, 0n], {
+        account: companyAdmin.account,
       });
       await registry.write.recognize([employee.account.address, "ipfs://test"], {
         account: companyAdmin.account,
@@ -256,8 +256,8 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([0n], {
-        account: employee.account,
+      await registry.write.registerEmployee([employee.account.address, 0n], {
+        account: companyAdmin.account,
       });
       await registry.write.recognize([employee.account.address, "ipfs://test"], {
         account: companyAdmin.account,
@@ -283,8 +283,8 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([0n], {
-        account: employee.account,
+      await registry.write.registerEmployee([employee.account.address, 0n], {
+        account: companyAdmin.account,
       });
       await registry.write.recognize([employee.account.address, "ipfs://test"], {
         account: companyAdmin.account,
@@ -306,14 +306,14 @@ describe("RewardsIntegration", function () {
 
   describe("R3: Recognize — edge cases", function () {
     it("R3-Error: should revert with CompanyNotFound when company does not exist", async function () {
-      const { registry, employee } =
+      const { registry, owner, employee } =
         await loadFixture(integrationFixture);
 
-      // Try to register employee to a non-existent company
+      // Try to register employee to a non-existent company (owner is DEFAULT_ADMIN)
       await expectRevertWithError(
         () =>
-          registry.write.registerEmployee([0n], {
-            account: employee.account,
+          registry.write.registerEmployee([employee.account.address, 0n], {
+            account: owner.account,
           }),
         registry.abi,
         "CompanyNotFound"
@@ -358,7 +358,7 @@ describe("RewardsIntegration", function () {
         ["Test", owner.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([0n], {
+      await registry.write.registerEmployee([owner.account.address, 0n], {
         account: owner.account,
       });
 
@@ -430,8 +430,8 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([0n], {
-        account: employee.account,
+      await registry.write.registerEmployee([employee.account.address, 0n], {
+        account: companyAdmin.account,
       });
 
       // other (not companyAdmin) tries to recognize
@@ -457,8 +457,8 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([0n], {
-        account: employee.account,
+      await registry.write.registerEmployee([employee.account.address, 0n], {
+        account: companyAdmin.account,
       });
 
       // Register another company with a different admin
@@ -511,8 +511,8 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([0n], {
-        account: employee.account,
+      await registry.write.registerEmployee([employee.account.address, 0n], {
+        account: companyAdmin.account,
       });
       await registry.write.recognize([employee.account.address, "ipfs://test"], {
         account: companyAdmin.account,
@@ -601,8 +601,8 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([0n], {
-        account: employee.account,
+      await registry.write.registerEmployee([employee.account.address, 0n], {
+        account: companyAdmin.account,
       });
 
       // recognize via registry

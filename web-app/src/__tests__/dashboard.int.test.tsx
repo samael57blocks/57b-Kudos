@@ -174,10 +174,10 @@ describe('Dashboard Routing Integration (S-001 / S-003)', () => {
     renderApp(['/dashboard'])
 
     await waitFor(() => {
-      // Visitor redirected to / sees the join-company page
+      // Visitor redirected to / sees the contact-admin message
       expect(screen.getByText('Welcome')).toBeInTheDocument()
       expect(
-        screen.getByText('Available Companies'),
+        screen.getByText(/Your admin needs to add you as an employee/),
       ).toBeInTheDocument()
     })
     expect(screen.queryByTestId('company-dashboard')).not.toBeInTheDocument()

@@ -248,7 +248,7 @@ describe('App routing', () => {
     await waitFor(() => {
       expect(screen.getByText('Welcome')).toBeInTheDocument()
       expect(
-        screen.getByText('Available Companies'),
+        screen.getByText(/Your admin needs to add you as an employee/),
       ).toBeInTheDocument()
     })
     expect(screen.queryByTestId('employee-portfolio')).not.toBeInTheDocument()

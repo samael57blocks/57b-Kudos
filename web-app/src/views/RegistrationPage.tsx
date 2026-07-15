@@ -5,7 +5,6 @@ import { useCompanyId } from '../hooks/useCompanyId'
 import { Layout } from '../components/Layout'
 import { CompanyCard } from '../components/CompanyCard'
 import { EmployeeList } from '../components/EmployeeList'
-import { JoinCompanySection } from '../components/JoinCompanySection'
 import { RegisterCompanyDialog } from '../components/RegisterCompanyDialog'
 import { getContractAddresses, COMPANY_REGISTRY_ABI } from '../config/contracts'
 import styles from './RegistrationPage.module.css'
@@ -140,7 +139,7 @@ export function RegistrationPage() {
             }
           />
 
-          <EmployeeList companyId={companyId} />
+          <EmployeeList companyId={companyId} showMinterToggle />
         </div>
 
         <RegisterCompanyDialog
@@ -159,9 +158,9 @@ export function RegistrationPage() {
       <div className={styles.container}>
         <h1 className={styles.title}>Company</h1>
         <p className={styles.subtitle}>
-          Join an existing company below to start receiving Kudos.
+          Your admin needs to add you as an employee before you can start
+          receiving Kudos. Contact your company admin to get registered.
         </p>
-        <JoinCompanySection onJoinSuccess={() => refetchRole?.()} />
       </div>
     </Layout>
   )

@@ -143,21 +143,26 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
         emit CompanyRegistered(companyId, name, adminWallet);
     }
 
-    /// @notice Register msg.sender as an employee of a company
-    /// @param companyId The company to join
-    /// @dev Public — any wallet can register. One wallet → one company.
-    function registerEmployee(uint256 companyId) external {
+    /// @notice Register an employee to a company (admin-only)
+    /// @param employee The employee address to register
+    /// @param companyId The company to assign the employee to
+    /// @dev Only DEFAULT_ADMIN_ROLE or the company admin can register employees.
+    function registerEmployee(address employee, uint256 companyId) external {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && _companies[companyId].admin != msg.sender) {
+            revert OnlyCompanyAdminOrAdmin(msg.sender, companyId);
+        }
+
         Company storage company = _companies[companyId];
         if (company.admin == address(0)) {
             revert CompanyNotFound(companyId);
         }
 
-        if (_employeeCompanies[msg.sender] != 0) {
-            revert EmployeeAlreadyRegistered(msg.sender, _employeeCompanies[msg.sender] - 1);
+        if (employee == address(0) || _employeeCompanies[employee] != 0) {
+            revert EmployeeAlreadyRegistered(employee, companyId);
         }
 
-        _employeeCompanies[msg.sender] = companyId + 1;
-        emit EmployeeRegistered(companyId, msg.sender);
+        _employeeCompanies[employee] = companyId + 1;
+        emit EmployeeRegistered(companyId, employee);
     }
 
     /// @notice Remove an employee from their company

@@ -64,15 +64,6 @@ vi.mock('../../components/RegisterCompanyDialog', () => ({
   ),
 }))
 
-vi.mock('../../components/JoinCompanySection', () => ({
-  JoinCompanySection: ({ onJoinSuccess }: { onJoinSuccess?: () => void }) => (
-    <div data-testid="join-section">
-      Join Section
-      {onJoinSuccess && <span data-testid="on-join-success-prop">present</span>}
-    </div>
-  ),
-}))
-
 // --- Helpers ---
 
 function setupMocks(overrides: Record<string, unknown> = {}) {
@@ -224,13 +215,13 @@ describe('RegistrationPage', () => {
 
   // ── Visitor role ──────────────────────────────────────────────────────────
 
-  it('shows join company section for visitor role', () => {
+  it('shows contact admin message for visitor role', () => {
     setupMocks({ role: { role: 'visitor' } })
     renderPage()
 
     expect(screen.getByText('Company')).toBeInTheDocument()
     expect(
-      screen.getByText('Join an existing company below to start receiving Kudos.'),
+      screen.getByText(/Your admin needs to add you as an employee/),
     ).toBeInTheDocument()
     expect(
       screen.queryByTestId('company-card'),
@@ -238,13 +229,6 @@ describe('RegistrationPage', () => {
     expect(
       screen.queryByTestId('employee-list'),
     ).not.toBeInTheDocument()
-  })
-
-  it('passes onJoinSuccess to JoinCompanySection for visitor role', () => {
-    setupMocks({ role: { role: 'visitor' } })
-    renderPage()
-
-    expect(screen.getByTestId('on-join-success-prop')).toBeInTheDocument()
   })
 
   // ── Employee role ─────────────────────────────────────────────────────────

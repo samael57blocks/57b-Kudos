@@ -77,9 +77,9 @@ describe("NFT57B", function () {
       { account: owner.account }
     );
 
-    // Register employee
-    await registry.write.registerEmployee([0n], {
-      account: employee.account,
+    // Register employee via admin
+    await registry.write.registerEmployee([employee.account.address, 0n], {
+      account: minter.account,
     });
 
     return { nft, registry, owner, minter, employee, recipient, other };

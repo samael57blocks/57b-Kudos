@@ -12,7 +12,7 @@ export type RegisterEmployeeStep =
   | 'error'
 
 export interface UseRegisterEmployeeResult {
-  registerEmployee: (companyId: bigint) => Promise<`0x${string}`>
+  registerEmployee: (employeeAddress: `0x${string}`, companyId: bigint) => Promise<`0x${string}`>
   step: RegisterEmployeeStep
   isConfirming: boolean
   txHash: `0x${string}` | undefined
@@ -23,8 +23,8 @@ export interface UseRegisterEmployeeResult {
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
- * Register as an employee of a company on-chain via
- * `CompanyRegistry.registerEmployee(companyId)`.
+ * Register an employee to a company on-chain via
+ * `CompanyRegistry.registerEmployee(employee, companyId)`.
  *
  * State machine: `idle → confirming → success | error`
  *
@@ -82,18 +82,18 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
 
   useEffect(() => {
     if (step === 'confirming') {
-      toast.loading('Joining company...')
+      toast.loading('Adding employee...')
     } else if (step === 'success') {
-      toast.success('Joined!')
+      toast.success('Employee added!')
     } else if (step === 'error') {
-      toast.error(error?.message ?? 'Join failed')
+      toast.error(error?.message ?? 'Add failed')
     }
   }, [step, error])
 
   // ── Register function ──────────────────────────────────────────────────────
 
   const registerEmployee = useCallback(
-    async (companyId: bigint): Promise<`0x${string}`> => {
+    async (employeeAddress: `0x${string}`, companyId: bigint): Promise<`0x${string}`> => {
       if (isRegisteringRef.current) {
         throw new Error('Registration already in progress')
       }
@@ -112,7 +112,7 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
           address: contracts.companyRegistry,
           abi: COMPANY_REGISTRY_ABI,
           functionName: 'registerEmployee',
-          args: [companyId],
+          args: [employeeAddress, companyId],
           gas: 300_000n,
         })
 
