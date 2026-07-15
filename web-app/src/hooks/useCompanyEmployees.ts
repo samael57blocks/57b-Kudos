@@ -7,8 +7,8 @@ import { getContractAddresses } from '../config/contracts'
 
 export interface EmployeeData {
   employee: `0x${string}`
-  /** Placeholder: will be populated from block timestamp in a follow-up */
-  date: string
+  name: string
+  registrationDate: string
 }
 
 export interface UseCompanyEmployeesResult {
@@ -67,7 +67,7 @@ export function useCompanyEmployees(
         const logs = await publicClient.getLogs({
           address: contracts.companyRegistry,
           event: parseAbiItem(
-            'event EmployeeRegistered(uint256 indexed companyId, address indexed employee)',
+            'event EmployeeRegistered(uint256 indexed companyId, address indexed employee, string name)',
           ),
           args: { companyId },
           fromBlock: 0n,
@@ -77,10 +77,31 @@ export function useCompanyEmployees(
 
         const empData: EmployeeData[] = logs.map((log) => ({
           employee: log.args.employee!,
-          date: '',
+          name: (log.args.name as string) ?? '',
+          registrationDate: '',
         }))
 
-        if (!cancelled) setEmployees(empData)
+        if (cancelled) return
+
+        // Resolve block timestamps for registration dates
+        const timestampPromises = empData.map((emp, i) =>
+          publicClient
+            .getBlock({ blockNumber: logs[i].blockNumber! })
+            .then((block) => {
+              if (cancelled) return
+              empData[i].registrationDate = new Date(
+                Number(block.timestamp) * 1000,
+              ).toLocaleDateString()
+            })
+            .catch(() => {
+              if (cancelled) return
+              empData[i].registrationDate = '—'
+            }),
+        )
+
+        await Promise.allSettled(timestampPromises)
+
+        if (!cancelled) setEmployees([...empData])
       } catch (err) {
         if (cancelled) return
         setError(

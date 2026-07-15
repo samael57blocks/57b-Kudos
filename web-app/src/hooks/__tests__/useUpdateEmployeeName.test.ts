@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { useRegisterEmployee } from '../useRegisterEmployee'
+import { useUpdateEmployeeName } from '../useUpdateEmployeeName'
 
 // --- Hoisted mocks ---
 
@@ -30,8 +30,8 @@ vi.mock('../../config/contracts', async (importOriginal) => {
 // --- Fixtures ---
 
 const MOCK_HASH = '0xTxHash' as `0x${string}`
-const COMPANY_ID = 42n
 const EMPLOYEE_ADDRESS = '0xEmployee' as `0x${string}`
+const EMPLOYEE_NAME = 'Bob'
 
 // --- Setup ---
 
@@ -64,7 +64,7 @@ function setupMocks(options?: {
   mockWriteContractAsync.mockResolvedValue(MOCK_HASH)
 }
 
-describe('useRegisterEmployee', () => {
+describe('useUpdateEmployeeName', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupMocks()
@@ -72,7 +72,7 @@ describe('useRegisterEmployee', () => {
 
   describe('initial state', () => {
     it('starts in idle step with no error', () => {
-      const { result } = renderHook(() => useRegisterEmployee())
+      const { result } = renderHook(() => useUpdateEmployeeName())
 
       expect(result.current.step).toBe('idle')
       expect(result.current.isConfirming).toBe(false)
@@ -81,7 +81,7 @@ describe('useRegisterEmployee', () => {
     })
   })
 
-  describe('register flow — success', () => {
+  describe('update flow — success', () => {
     it('transitions idle → success on happy path', async () => {
       mockUseWaitForTransactionReceipt
         .mockReturnValueOnce({
@@ -95,13 +95,13 @@ describe('useRegisterEmployee', () => {
           error: null,
         })
 
-      const { result } = renderHook(() => useRegisterEmployee())
+      const { result } = renderHook(() => useUpdateEmployeeName())
 
       expect(result.current.step).toBe('idle')
 
       let hash: `0x${string}` | undefined
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, 'Alice').then((h) => {
+        result.current.updateEmployeeName(EMPLOYEE_ADDRESS, EMPLOYEE_NAME).then((h) => {
           hash = h
         })
       })
@@ -120,10 +120,10 @@ describe('useRegisterEmployee', () => {
     })
 
     it('calls writeContractAsync with correct args', async () => {
-      const { result } = renderHook(() => useRegisterEmployee())
+      const { result } = renderHook(() => useUpdateEmployeeName())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, 'Alice')
+        result.current.updateEmployeeName(EMPLOYEE_ADDRESS, EMPLOYEE_NAME)
       })
 
       await waitFor(() => {
@@ -133,9 +133,9 @@ describe('useRegisterEmployee', () => {
       expect(mockWriteContractAsync).toHaveBeenCalledWith({
         address: '0xRegistry',
         abi: expect.any(Array),
-        functionName: 'registerEmployee',
-        args: [EMPLOYEE_ADDRESS, COMPANY_ID, 'Alice'],
-        gas: 350_000n,
+        functionName: 'updateEmployeeName',
+        args: [EMPLOYEE_ADDRESS, EMPLOYEE_NAME],
+        gas: 200_000n,
       })
     })
   })
@@ -146,10 +146,10 @@ describe('useRegisterEmployee', () => {
         new Error('User rejected transaction'),
       )
 
-      const { result } = renderHook(() => useRegisterEmployee())
+      const { result } = renderHook(() => useUpdateEmployeeName())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, 'Alice').catch(() => {
+        result.current.updateEmployeeName(EMPLOYEE_ADDRESS, EMPLOYEE_NAME).catch(() => {
           /* expected */
         })
       })
@@ -177,10 +177,10 @@ describe('useRegisterEmployee', () => {
         error: new Error('Transaction reverted'),
       })
 
-      const { result } = renderHook(() => useRegisterEmployee())
+      const { result } = renderHook(() => useUpdateEmployeeName())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, 'Alice').catch(() => {
+        result.current.updateEmployeeName(EMPLOYEE_ADDRESS, EMPLOYEE_NAME).catch(() => {
           /* expected */
         })
       })
@@ -195,15 +195,15 @@ describe('useRegisterEmployee', () => {
   })
 
   describe('double-submit guard', () => {
-    it('throws when registerEmployee is called while already confirming', async () => {
+    it('throws when updateEmployeeName is called while already confirming', async () => {
       mockWriteContractAsync.mockImplementation(
         () => new Promise(() => {}),
       )
 
-      const { result } = renderHook(() => useRegisterEmployee())
+      const { result } = renderHook(() => useUpdateEmployeeName())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, 'Alice')
+        result.current.updateEmployeeName(EMPLOYEE_ADDRESS, EMPLOYEE_NAME)
       })
 
       await waitFor(() => {
@@ -212,7 +212,7 @@ describe('useRegisterEmployee', () => {
 
       await act(async () => {
         await expect(
-          result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, 'Alice'),
+          result.current.updateEmployeeName(EMPLOYEE_ADDRESS, EMPLOYEE_NAME),
         ).rejects.toThrow('already in progress')
       })
     })
@@ -232,10 +232,10 @@ describe('useRegisterEmployee', () => {
           error: null,
         })
 
-      const { result } = renderHook(() => useRegisterEmployee())
+      const { result } = renderHook(() => useUpdateEmployeeName())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, 'Alice')
+        result.current.updateEmployeeName(EMPLOYEE_ADDRESS, EMPLOYEE_NAME)
       })
 
       await waitFor(() => {

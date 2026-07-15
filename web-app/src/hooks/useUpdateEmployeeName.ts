@@ -5,15 +5,15 @@ import { COMPANY_REGISTRY_ABI, getContractAddresses } from '../config/contracts'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type RegisterEmployeeStep =
+export type UpdateEmployeeNameStep =
   | 'idle'
   | 'confirming'
   | 'success'
   | 'error'
 
-export interface UseRegisterEmployeeResult {
-  registerEmployee: (employeeAddress: `0x${string}`, companyId: bigint, employeeName: string) => Promise<`0x${string}`>
-  step: RegisterEmployeeStep
+export interface UseUpdateEmployeeNameResult {
+  updateEmployeeName: (employeeAddress: `0x${string}`, name: string) => Promise<`0x${string}`>
+  step: UpdateEmployeeNameStep
   isConfirming: boolean
   txHash: `0x${string}` | undefined
   error: Error | null
@@ -23,14 +23,14 @@ export interface UseRegisterEmployeeResult {
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
- * Register an employee to a company on-chain via
- * `CompanyRegistry.registerEmployee(employee, companyId)`.
+ * Update an employee's display name on-chain via
+ * `CompanyRegistry.updateEmployeeName(employee, name)`.
  *
  * State machine: `idle → confirming → success | error`
  *
  * Double-submit is prevented via a ref guard.
  */
-export function useRegisterEmployee(): UseRegisterEmployeeResult {
+export function useUpdateEmployeeName(): UseUpdateEmployeeNameResult {
   const { writeContractAsync, data: txHashData, error: writeError } =
     useWriteContract()
   const {
@@ -41,28 +41,25 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
     hash: txHashData,
   })
 
-  const [step, setStep] = useState<RegisterEmployeeStep>('idle')
+  const [step, setStep] = useState<UpdateEmployeeNameStep>('idle')
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
   const [error, setError] = useState<Error | null>(null)
-  const isRegisteringRef = useRef(false)
+  const isUpdatingRef = useRef(false)
 
   // ── Effects: sync wagmi state to our step machine ──────────────────────────
 
-  // When tx receipt comes through → success
   useEffect(() => {
     if (txSuccess && step === 'confirming') {
       setStep('success')
     }
   }, [txSuccess, step])
 
-  // When wagmi writeContract provides a hash, store it
   useEffect(() => {
     if (txHashData && txHashData !== txHash) {
       setTxHash(txHashData)
     }
   }, [txHashData, txHash])
 
-  // Write errors (e.g. user reject)
   useEffect(() => {
     if (writeError && step === 'confirming') {
       setError(writeError)
@@ -70,7 +67,6 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
     }
   }, [writeError, step])
 
-  // Confirmation errors
   useEffect(() => {
     if (confirmError && step === 'confirming') {
       setError(confirmError)
@@ -82,22 +78,22 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
 
   useEffect(() => {
     if (step === 'confirming') {
-      toast.loading('Adding employee...')
+      toast.loading('Updating name...')
     } else if (step === 'success') {
-      toast.success('Employee added!')
+      toast.success('Name updated!')
     } else if (step === 'error') {
-      toast.error(error?.message ?? 'Add failed')
+      toast.error(error?.message ?? 'Update failed')
     }
   }, [step, error])
 
-  // ── Register function ──────────────────────────────────────────────────────
+  // ── Update function ──────────────────────────────────────────────────────
 
-  const registerEmployee = useCallback(
-    async (employeeAddress: `0x${string}`, companyId: bigint, employeeName: string): Promise<`0x${string}`> => {
-      if (isRegisteringRef.current) {
-        throw new Error('Registration already in progress')
+  const updateEmployeeName = useCallback(
+    async (employeeAddress: `0x${string}`, name: string): Promise<`0x${string}`> => {
+      if (isUpdatingRef.current) {
+        throw new Error('Update already in progress')
       }
-      isRegisteringRef.current = true
+      isUpdatingRef.current = true
 
       try {
         setError(null)
@@ -111,21 +107,21 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
         const hash = await writeContractAsync({
           address: contracts.companyRegistry,
           abi: COMPANY_REGISTRY_ABI,
-          functionName: 'registerEmployee',
-          args: [employeeAddress, companyId, employeeName],
-          gas: 350_000n,
+          functionName: 'updateEmployeeName',
+          args: [employeeAddress, name],
+          gas: 200_000n,
         })
 
         setTxHash(hash)
         return hash
       } catch (err) {
         const error =
-          err instanceof Error ? err : new Error('Registration failed')
+          err instanceof Error ? err : new Error('Update failed')
         setError(error)
         setStep('error')
         throw error
       } finally {
-        isRegisteringRef.current = false
+        isUpdatingRef.current = false
       }
     },
     [writeContractAsync],
@@ -140,7 +136,7 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
   }, [])
 
   return {
-    registerEmployee,
+    updateEmployeeName,
     step,
     isConfirming,
     txHash,
