@@ -1,22 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MintNftPage } from '../MintNftPage'
 import type { ReactNode } from 'react'
+import type { EmployeeData } from '../../hooks/useCompanyEmployees'
 
 // --- Hoisted mocks ---
 
 const mockUseAccount = vi.hoisted(() => vi.fn())
 const mockUseCompanyId = vi.hoisted(() => vi.fn())
 const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
-const mockWriteContractAsync = vi.hoisted(() => vi.fn())
-const mockUseWaitForTransactionReceipt = vi.hoisted(() => vi.fn())
 
 vi.mock('wagmi', () => ({
   useAccount: mockUseAccount,
-  useWriteContract: () => ({
-    writeContractAsync: mockWriteContractAsync,
-  }),
-  useWaitForTransactionReceipt: mockUseWaitForTransactionReceipt,
 }))
 
 vi.mock('../../hooks/useCompanyId', () => ({
@@ -27,12 +22,22 @@ vi.mock('../../hooks/useCompanyEmployees', () => ({
   useCompanyEmployees: mockUseCompanyEmployees,
 }))
 
-vi.mock('../../config/contracts', () => ({
-  COMPANY_REGISTRY_ABI: [],
-  getContractAddresses: () => ({
-    companyRegistry: '0xRegistry',
-    nft57b: '0xNFT57B',
-  }),
+vi.mock('../../components/MinterMintForm', () => ({
+  MinterMintForm: ({
+    companyId,
+    employees,
+  }: {
+    companyId: bigint
+    employees: EmployeeData[]
+  }) => (
+    <div
+      data-testid="minter-mint-form"
+      data-company-id={String(companyId)}
+      data-employees={JSON.stringify(employees)}
+    >
+      MinterMintForm
+    </div>
+  ),
 }))
 
 // Mock Layout to just render children
@@ -48,8 +53,10 @@ function setupMocks(
   overrides: {
     account?: { address?: `0x${string}`; isConnected?: boolean }
     companyId?: { companyId?: bigint | null; isLoading?: boolean }
-    employees?: { employees?: Array<{ employee: `0x${string}`; date: string }>; isLoading?: boolean }
-    receipt?: { data?: unknown; isLoading?: boolean; isError?: boolean; error?: Error | null }
+    employees?: {
+      employees?: EmployeeData[]
+      isLoading?: boolean
+    }
   } = {},
 ) {
   mockUseAccount.mockReturnValue({
@@ -64,19 +71,19 @@ function setupMocks(
   })
   mockUseCompanyEmployees.mockReturnValue({
     employees: [
-      { employee: '0xEmp1' as `0x${string}`, date: '' },
-      { employee: '0xEmp2' as `0x${string}`, date: '' },
+      {
+        employee: '0xEmp1' as `0x${string}`,
+        name: 'Alice',
+        registrationDate: '2024-01-01',
+      },
+      {
+        employee: '0xEmp2' as `0x${string}`,
+        name: 'Bob',
+        registrationDate: '2024-02-01',
+      },
     ],
     isLoading: false,
     ...(overrides.employees ?? {}),
-  })
-  mockWriteContractAsync.mockReset()
-  mockUseWaitForTransactionReceipt.mockReturnValue({
-    data: null,
-    isLoading: false,
-    isError: false,
-    error: null,
-    ...(overrides.receipt ?? {}),
   })
 }
 
@@ -92,130 +99,41 @@ describe('MintNftPage', () => {
     setupMocks()
   })
 
-  it('renders the mint form with employee dropdown and URI input', () => {
+  it('renders MinterMintForm when connected', () => {
     renderPage()
 
-    expect(screen.getByText(/mint kudos nft/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/employee/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/metadata uri/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /mint kudos/i })).toBeInTheDocument()
+    expect(screen.getByTestId('minter-mint-form')).toBeInTheDocument()
   })
 
-  it('populates employee dropdown with company employees', () => {
+  it('passes companyId and employees to MinterMintForm', () => {
     renderPage()
 
-    const select = screen.getByLabelText(/employee/i) as HTMLSelectElement
-    expect(select.options.length).toBe(3) // placeholder + 2 employees
-    expect(screen.getByText('0xEmp1')).toBeInTheDocument()
-    expect(screen.getByText('0xEmp2')).toBeInTheDocument()
+    const form = screen.getByTestId('minter-mint-form')
+    expect(form).toHaveAttribute('data-company-id', '1')
+    expect(JSON.parse(form.getAttribute('data-employees')!)).toHaveLength(2)
   })
 
-  it('shows wallet not connected message when address is missing', () => {
+  it('shows loading while employees fetch', () => {
+    setupMocks({ employees: { employees: [], isLoading: true } })
+    renderPage()
+
+    expect(screen.getByText(/loading employees/i)).toBeInTheDocument()
+    expect(screen.queryByTestId('minter-mint-form')).not.toBeInTheDocument()
+  })
+
+  it('shows connect prompt when disconnected', () => {
     setupMocks({ account: { isConnected: false } })
     renderPage()
 
     expect(screen.getByText(/connect your wallet/i)).toBeInTheDocument()
+    expect(screen.queryByTestId('minter-mint-form')).not.toBeInTheDocument()
   })
 
-  it('calls writeContractAsync on submit with correct args', async () => {
-    mockWriteContractAsync.mockResolvedValue('0xtxhash')
+  it('does not render raw URI input', () => {
     renderPage()
 
-    // Select first employee
-    const select = screen.getByLabelText(/employee/i)
-    fireEvent.change(select, { target: { value: '0xEmp1' } })
-
-    // Enter URI
-    const uriInput = screen.getByLabelText(/metadata uri/i)
-    fireEvent.change(uriInput, { target: { value: 'ipfs://QmTest' } })
-
-    // Submit
-    fireEvent.click(screen.getByRole('button', { name: /mint kudos/i }))
-
-    expect(mockWriteContractAsync).toHaveBeenCalledWith({
-      address: '0xRegistry',
-      abi: [],
-      functionName: 'mintKudos',
-      args: ['0xEmp1', 'ipfs://QmTest'],
-    })
-  })
-
-  it('disables submit button while transaction is pending', async () => {
-    let resolveTx!: (value: string) => void
-    mockWriteContractAsync.mockImplementation(
-      () => new Promise<string>((r) => { resolveTx = r }),
-    )
-    // Initially not loading — form renders normally
-    mockUseWaitForTransactionReceipt.mockReturnValue({
-      data: null,
-      isLoading: false,
-      isError: false,
-      error: null,
-    })
-    renderPage()
-
-    // Fill form and submit
-    fireEvent.change(screen.getByLabelText(/employee/i), {
-      target: { value: '0xEmp1' },
-    })
-    fireEvent.change(screen.getByLabelText(/metadata uri/i), {
-      target: { value: 'ipfs://QmTest' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /mint kudos/i }))
-
-    // After writeContractAsync resolves, txHash is set and receipt mock returns isLoading
-    mockUseWaitForTransactionReceipt.mockReturnValue({
-      data: null,
-      isLoading: true,
-      isError: false,
-      error: null,
-    })
-
-    // Resolve the writeContractAsync promise
-    resolveTx('0xtxhash')
-
-    // Button should now show Minting... and be disabled (wait for React re-render)
-    await waitFor(() => {
-      const button = screen.getByRole('button', { name: /minting\.\.\./i })
-      expect(button).toBeDisabled()
-    })
-  })
-
-  it('shows success message after transaction confirms', () => {
-    mockUseWaitForTransactionReceipt.mockReturnValue({
-      data: { status: 'success' },
-      isLoading: false,
-      isError: false,
-      error: null,
-    })
-    renderPage()
-
-    expect(screen.getByText(/kudos minted successfully/i)).toBeInTheDocument()
-  })
-
-  it('shows error message when writeContractAsync rejects', async () => {
-    mockWriteContractAsync.mockRejectedValue(new Error('User rejected'))
-    renderPage()
-
-    fireEvent.change(screen.getByLabelText(/employee/i), {
-      target: { value: '0xEmp1' },
-    })
-    fireEvent.change(screen.getByLabelText(/metadata uri/i), {
-      target: { value: 'ipfs://QmTest' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /mint kudos/i }))
-
-    // Wait for the rejection to resolve
-    await screen.findByText(/user rejected/i)
-    expect(screen.getByRole('alert')).toHaveTextContent(/user rejected/i)
-  })
-
-  it('shows loading state while employees are being fetched', () => {
-    setupMocks({
-      employees: { employees: [], isLoading: true },
-    })
-    renderPage()
-
-    expect(screen.getByText(/loading employees/i)).toBeInTheDocument()
+    const urlInput = document.querySelector('input[type="url"]')
+    expect(urlInput).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/metadata uri/i)).not.toBeInTheDocument()
   })
 })
