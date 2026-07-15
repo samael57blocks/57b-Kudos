@@ -7,6 +7,8 @@ import { COMPANY_REGISTRY_ABI, getContractAddresses } from '../config/contracts'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type ContractFunction = 'recognize' | 'mintKudos'
+
 export type MintStep = 'idle' | 'uploading' | 'confirming' | 'success' | 'error'
 
 export interface Achievement {
@@ -44,7 +46,10 @@ export interface UseMintNFTResult {
  *
  * Double-submit is prevented via a ref guard.
  */
-export function useMintNFT(companyId: bigint): UseMintNFTResult {
+export function useMintNFT(
+  companyId: bigint,
+  contractFunction?: ContractFunction,
+): UseMintNFTResult {
   const { writeContractAsync, data: txHashData, error: writeError } =
     useWriteContract()
   const {
@@ -146,7 +151,7 @@ export function useMintNFT(companyId: bigint): UseMintNFTResult {
         const hash = await writeContractAsync({
           address: contracts.companyRegistry,
           abi: COMPANY_REGISTRY_ABI,
-          functionName: 'recognize',
+          functionName: contractFunction ?? 'recognize',
           args: [achievement.employee, uri],
         })
 
@@ -162,7 +167,7 @@ export function useMintNFT(companyId: bigint): UseMintNFTResult {
         isMintingRef.current = false
       }
     },
-    [companyId, writeContractAsync],
+    [companyId, writeContractAsync, contractFunction],
   )
 
   // ── Reset ───────────────────────────────────────────────────────────────────
