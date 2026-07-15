@@ -55,6 +55,7 @@ describe('useCompanyEmployees', () => {
       getLogs: mockGetLogs,
       getBlock: mockGetBlock,
     })
+    mockGetBlock.mockResolvedValue({ timestamp: 1_700_000_000n })
   })
 
   it('returns employees from EmployeeRegistered events filtered by companyId', async () => {
@@ -74,9 +75,10 @@ describe('useCompanyEmployees', () => {
       employee: '0x1111111111111111111111111111111111111111',
       name: 'Alice',
     })
-    expect(result.current.employees[1].employee).toBe(
-      '0x2222222222222222222222222222222222222222',
-    )
+    expect(result.current.employees[1]).toMatchObject({
+      employee: '0x2222222222222222222222222222222222222222',
+      name: 'Bob',
+    })
   })
 
   it('fetches employees when companyId is 0n (first company)', async () => {
@@ -134,7 +136,7 @@ describe('useCompanyEmployees', () => {
   })
 
   it('manual refresh re-fetches events and updates employees', async () => {
-    mockGetLogs.mockImplementation(async () => []) // initial fetch — empty
+    mockGetLogs.mockImplementation(async () => [])
 
     const { result } = renderHook(() => useCompanyEmployees(42n))
 
@@ -144,7 +146,6 @@ describe('useCompanyEmployees', () => {
 
     expect(result.current.employees).toEqual([])
 
-    // Second fetch returns data
     mockGetLogs.mockImplementation(async () => MOCK_EVENTS)
 
     await act(async () => {
@@ -154,5 +155,73 @@ describe('useCompanyEmployees', () => {
     await waitFor(() => {
       expect(result.current.employees).toHaveLength(2)
     })
+  })
+
+  it('parses name from EmployeeRegistered event logs', async () => {
+    mockGetLogs.mockImplementation(async () => MOCK_EVENTS)
+
+    const { result } = renderHook(() => useCompanyEmployees(42n))
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.employees[0].name).toBe('Alice')
+    expect(result.current.employees[1].name).toBe('Bob')
+  })
+
+  it('handles missing name gracefully (falls back to empty string)', async () => {
+    const eventsWithoutName = [
+      {
+        args: {
+          companyId: 42n,
+          employee: '0x3333333333333333333333333333333333333333' as `0x${string}`,
+        },
+        blockNumber: 50n,
+      },
+    ]
+    mockGetLogs.mockImplementation(async () => eventsWithoutName)
+
+    const { result } = renderHook(() => useCompanyEmployees(42n))
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.employees[0].name).toBe('')
+  })
+
+  it('fetches block timestamps for registration dates', async () => {
+    mockGetLogs.mockImplementation(async () => MOCK_EVENTS)
+    mockGetBlock.mockResolvedValue({ timestamp: 1_700_000_000n })
+
+    const { result } = renderHook(() => useCompanyEmployees(42n))
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockGetBlock).toHaveBeenCalledWith({ blockNumber: 100n })
+    expect(mockGetBlock).toHaveBeenCalledWith({ blockNumber: 200n })
+    expect(result.current.employees[0].registrationDate).toBe(
+      new Date(1_700_000_000 * 1000).toLocaleDateString(),
+    )
+    expect(result.current.employees[1].registrationDate).toBe(
+      new Date(1_700_000_000 * 1000).toLocaleDateString(),
+    )
+  })
+
+  it('handles getBlock failure gracefully (falls back to "—")', async () => {
+    mockGetLogs.mockImplementation(async () => MOCK_EVENTS)
+    mockGetBlock.mockRejectedValue(new Error('Block not found'))
+
+    const { result } = renderHook(() => useCompanyEmployees(42n))
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.employees[0].registrationDate).toBe('—')
+    expect(result.current.employees[1].registrationDate).toBe('—')
   })
 })
