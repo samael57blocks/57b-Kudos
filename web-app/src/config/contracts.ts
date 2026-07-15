@@ -64,7 +64,7 @@ export const COMPANY_REGISTRY_ABI = parseAbi([
   'function nft57b() external view returns (address)',
   // Write
   'function registerCompany(string calldata name, address adminWallet) external returns (uint256 companyId)',
-  'function registerEmployee(uint256 companyId) external',
+  'function registerEmployee(address employee, uint256 companyId) external',
   'function recognize(address employee, string calldata uri) external returns (uint256 tokenId)',
   // AccessControl
   'function MINTER_ROLE() external pure returns (bytes32)',

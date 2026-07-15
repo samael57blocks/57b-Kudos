@@ -7,6 +7,7 @@ import { EmployeeList } from '../EmployeeList'
 const mockRefresh = vi.hoisted(() => vi.fn())
 const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
 const mockUseMinterRole = vi.hoisted(() => vi.fn())
+const mockUseRegisterEmployee = vi.hoisted(() => vi.fn())
 
 vi.mock('../../hooks/useCompanyEmployees', () => ({
   useCompanyEmployees: mockUseCompanyEmployees,
@@ -14,6 +15,10 @@ vi.mock('../../hooks/useCompanyEmployees', () => ({
 
 vi.mock('../../hooks/useMinterRole', () => ({
   useMinterRole: mockUseMinterRole,
+}))
+
+vi.mock('../../hooks/useRegisterEmployee', () => ({
+  useRegisterEmployee: mockUseRegisterEmployee,
 }))
 
 // --- Fixtures ---
@@ -65,6 +70,14 @@ describe('EmployeeList', () => {
     vi.clearAllMocks()
     setupEmployeeState()
     setupMinterRoleState()
+    mockUseRegisterEmployee.mockReturnValue({
+      registerEmployee: vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`),
+      step: 'idle',
+      isConfirming: false,
+      txHash: undefined,
+      error: null,
+      reset: vi.fn(),
+    })
   })
 
   it('renders column headers', () => {

@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useReadContract } from 'wagmi'
 import { Layout } from '../components/Layout'
-import { JoinCompanySection } from '../components/JoinCompanySection'
 import { useWalletConnection } from '../hooks/useWalletConnection'
 import { useUserRole } from '../hooks/useUserRole'
 import { useCompanyId } from '../hooks/useCompanyId'
@@ -172,25 +171,16 @@ function HomePage() {
     )
   }
 
-  // ── Visitor: join a company ──
+  // ── Visitor: contact admin message ──
 
   return (
     <Layout>
       <div className={styles.section}>
         <h1 className={styles.welcomeHeading}>Welcome</h1>
         <p className={styles.welcomeBody}>
-          You are not yet registered to any company. Join one below to start
-          receiving Kudos recognition NFTs.
+          Your admin needs to add you as an employee before you can start
+          receiving Kudos.
         </p>
-
-        <h2 className={styles.subHeadingLg}>
-          Available Companies
-        </h2>
-
-        <JoinCompanySection
-          employeeCompanyId={employeeCompanyId}
-          onJoinSuccess={refetchRole}
-        />
       </div>
     </Layout>
   )
