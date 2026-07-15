@@ -7,15 +7,15 @@ import type { EmployeeData } from '../../hooks/useCompanyEmployees'
 // --- Hoisted mocks ---
 
 const mockUseAccount = vi.hoisted(() => vi.fn())
-const mockUseCompanyId = vi.hoisted(() => vi.fn())
+const mockUseMintCompanyId = vi.hoisted(() => vi.fn())
 const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
 
 vi.mock('wagmi', () => ({
   useAccount: mockUseAccount,
 }))
 
-vi.mock('../../hooks/useCompanyId', () => ({
-  useCompanyId: mockUseCompanyId,
+vi.mock('../../hooks/useMintCompanyId', () => ({
+  useMintCompanyId: mockUseMintCompanyId,
 }))
 
 vi.mock('../../hooks/useCompanyEmployees', () => ({
@@ -52,7 +52,11 @@ vi.mock('../../components/Layout', () => ({
 function setupMocks(
   overrides: {
     account?: { address?: `0x${string}`; isConnected?: boolean }
-    companyId?: { companyId?: bigint | null; isLoading?: boolean }
+    companyId?: {
+      companyId?: bigint | null
+      isLoading?: boolean
+      error?: Error | null
+    }
     employees?: {
       employees?: EmployeeData[]
       isLoading?: boolean
@@ -64,9 +68,10 @@ function setupMocks(
     isConnected: true,
     ...(overrides.account ?? {}),
   })
-  mockUseCompanyId.mockReturnValue({
+  mockUseMintCompanyId.mockReturnValue({
     companyId: 1n,
     isLoading: false,
+    error: null,
     ...(overrides.companyId ?? {}),
   })
   mockUseCompanyEmployees.mockReturnValue({
@@ -135,5 +140,21 @@ describe('MintNftPage', () => {
     const urlInput = document.querySelector('input[type="url"]')
     expect(urlInput).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/metadata uri/i)).not.toBeInTheDocument()
+  })
+
+  it('shows error when company cannot be resolved', () => {
+    setupMocks({
+      companyId: {
+        companyId: null,
+        isLoading: false,
+        error: new Error(
+          'Unable to find a company for this wallet. You must be a company admin or a registered employee with minter access.',
+        ),
+      },
+    })
+    renderPage()
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/unable to find a company/i)
+    expect(screen.queryByTestId('minter-mint-form')).not.toBeInTheDocument()
   })
 })
