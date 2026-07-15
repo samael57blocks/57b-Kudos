@@ -138,7 +138,7 @@ describe("CompanyRegistry", function () {
       );
 
       // owner (DEFAULT_ADMIN) registers anotherWallet as employee of company 0
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
         account: owner.account,
       });
 
@@ -158,7 +158,7 @@ describe("CompanyRegistry", function () {
       );
 
       // companyAdmin registers anotherWallet
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Bob'], {
         account: companyAdmin.account,
       });
 
@@ -174,10 +174,10 @@ describe("CompanyRegistry", function () {
         { account: owner.account }
       );
 
-      await registry.write.registerEmployee([minterWallet.account.address, 0n], {
+      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
         account: owner.account,
       });
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Another'], {
         account: owner.account,
       });
 
@@ -191,7 +191,7 @@ describe("CompanyRegistry", function () {
 
       await expectRevertWithError(
         () =>
-          registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+          registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Ghost'], {
             account: owner.account,
           }),
         registry.abi,
@@ -208,13 +208,13 @@ describe("CompanyRegistry", function () {
         { account: owner.account }
       );
 
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
         account: owner.account,
       });
 
       await expectRevertWithError(
         () =>
-          registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+          registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
             account: owner.account,
           }),
         registry.abi,
@@ -233,7 +233,7 @@ describe("CompanyRegistry", function () {
 
       await expectRevertWithError(
         () =>
-          registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+          registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
             account: other.account,
           }),
         registry.abi,
@@ -258,7 +258,7 @@ describe("CompanyRegistry", function () {
       // companyAdmin (admin of company 0) tries to register to company 1
       await expectRevertWithError(
         () =>
-          registry.write.registerEmployee([anotherWallet.account.address, 1n], {
+          registry.write.registerEmployee([anotherWallet.account.address, 1n, 'Alice'], {
             account: companyAdmin.account,
           }),
         registry.abi,
@@ -278,12 +278,139 @@ describe("CompanyRegistry", function () {
       await expectRevertWithError(
         () =>
           registry.write.registerEmployee(
-            ["0x0000000000000000000000000000000000000000", 0n],
+            ["0x0000000000000000000000000000000000000000", 0n, 'Zero'],
             { account: owner.account }
           ),
         registry.abi,
         "EmployeeAlreadyRegistered"
       );
+    });
+  });
+
+  describe("Employee Names", function () {
+    async function nameFixture() {
+      const fixture = await deployFixture();
+      const { registry, owner, companyAdmin, other, anotherWallet } = fixture;
+
+      await registry.write.registerCompany(
+        ["ACME Corp", companyAdmin.account.address],
+        { account: owner.account }
+      );
+
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
+        account: owner.account,
+      });
+
+      return fixture;
+    }
+
+    it("getEmployeeName returns stored name after registration", async function () {
+      const { registry, anotherWallet } = await loadFixture(nameFixture);
+
+      const name = await registry.read.getEmployeeName([anotherWallet.account.address]);
+      expect(name).to.equal('Alice');
+    });
+
+    it("EmployeeRegistered event includes name field", async function () {
+      const { registry, owner, anotherWallet } = await loadFixture(nameFixture);
+
+      const publicClient = await hre.viem.getPublicClient();
+      const logs = await publicClient.getLogs({
+        address: registry.address,
+        fromBlock: 0n,
+        event: {
+          type: 'event',
+          name: 'EmployeeRegistered',
+          inputs: [
+            { type: 'uint256', name: 'companyId', indexed: true },
+            { type: 'address', name: 'employee', indexed: true },
+            { type: 'string', name: 'name', indexed: false },
+          ],
+        },
+      });
+
+      expect(logs.length).to.equal(1);
+      expect(logs[0].args.companyId).to.equal(0n);
+      expect(getAddress(logs[0].args.employee)).to.equal(
+        getAddress(anotherWallet.account.address)
+      );
+      expect(logs[0].args.name).to.equal('Alice');
+    });
+
+    it("empty name is stored correctly", async function () {
+      const { registry, owner, other } = await loadFixture(nameFixture);
+
+      await registry.write.registerEmployee([other.account.address, 0n, ''], {
+        account: owner.account,
+      });
+
+      const name = await registry.read.getEmployeeName([other.account.address]);
+      expect(name).to.equal('');
+    });
+
+    it("updateEmployeeName — DEFAULT_ADMIN can update", async function () {
+      const { registry, owner, anotherWallet } = await loadFixture(nameFixture);
+
+      await registry.write.updateEmployeeName([anotherWallet.account.address, 'Alicia'], {
+        account: owner.account,
+      });
+
+      const name = await registry.read.getEmployeeName([anotherWallet.account.address]);
+      expect(name).to.equal('Alicia');
+    });
+
+    it("updateEmployeeName — company admin can update", async function () {
+      const { registry, companyAdmin, anotherWallet } = await loadFixture(nameFixture);
+
+      await registry.write.updateEmployeeName([anotherWallet.account.address, 'Alicia'], {
+        account: companyAdmin.account,
+      });
+
+      const name = await registry.read.getEmployeeName([anotherWallet.account.address]);
+      expect(name).to.equal('Alicia');
+    });
+
+    it("updateEmployeeName — reverts for unregistered employee", async function () {
+      const { registry, owner, other } = await loadFixture(nameFixture);
+
+      await expectRevertWithError(
+        () =>
+          registry.write.updateEmployeeName([other.account.address, 'Ghost'], {
+            account: owner.account,
+          }),
+        registry.abi,
+        "EmployeeNotRegistered"
+      );
+    });
+
+    it("updateEmployeeName — reverts for unauthorized caller", async function () {
+      const { registry, other, anotherWallet } = await loadFixture(nameFixture);
+
+      await expectRevertWithError(
+        () =>
+          registry.write.updateEmployeeName([anotherWallet.account.address, 'Hacker'], {
+            account: other.account,
+          }),
+        registry.abi,
+        "OnlyCompanyAdminOrAdmin"
+      );
+    });
+
+    it("removeEmployee clears employee name", async function () {
+      const { registry, owner, anotherWallet } = await loadFixture(nameFixture);
+
+      // Name is set
+      let name = await registry.read.getEmployeeName([anotherWallet.account.address]);
+      expect(name).to.equal('Alice');
+
+      // Remove employee
+      await registry.write.removeEmployee([anotherWallet.account.address], {
+        account: owner.account,
+      });
+
+      // Name should be cleared
+      name = await registry.read.getEmployeeName([anotherWallet.account.address]);
+      expect(name).to.equal('');
     });
   });
 
@@ -296,7 +423,7 @@ describe("CompanyRegistry", function () {
         ["ACME Corp", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
         account: companyAdmin.account,
       });
 
@@ -317,7 +444,7 @@ describe("CompanyRegistry", function () {
         ["ACME Corp", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Bob'], {
         account: companyAdmin.account,
       });
 
@@ -337,7 +464,7 @@ describe("CompanyRegistry", function () {
         ["ACME Corp", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
         account: companyAdmin.account,
       });
 
@@ -375,7 +502,7 @@ describe("CompanyRegistry", function () {
         ["ACME Corp", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
         account: companyAdmin.account,
       });
 
@@ -424,7 +551,7 @@ describe("CompanyRegistry", function () {
         ["ACME Corp", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([minterWallet.account.address, 0n], {
+      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
         account: companyAdmin.account,
       });
 
@@ -527,7 +654,7 @@ describe("CompanyRegistry", function () {
         ["ACME Corp", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([minterWallet.account.address, 0n], {
+      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
         account: companyAdmin.account,
       });
 
@@ -635,7 +762,7 @@ describe("CompanyRegistry", function () {
         ["ACME Corp", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([minterWallet.account.address, 0n], {
+      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
         account: companyAdmin.account,
       });
 
@@ -691,10 +818,10 @@ describe("CompanyRegistry", function () {
       );
 
       // Register two employees via admin
-      await registry.write.registerEmployee([minterWallet.account.address, 0n], {
+      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
         account: companyAdmin.account,
       });
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n], {
+      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Another'], {
         account: companyAdmin.account,
       });
 
@@ -792,7 +919,7 @@ describe("CompanyRegistry", function () {
         ["Tech Inc", other.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([other.account.address, 1n], {
+      await registry.write.registerEmployee([other.account.address, 1n, 'TechGuy'], {
         account: owner.account,
       });
 
