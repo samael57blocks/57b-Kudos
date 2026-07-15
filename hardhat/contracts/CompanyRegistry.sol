@@ -25,7 +25,7 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
     event CompanyRegistered(uint256 indexed companyId, string name, address indexed admin);
 
     /// @notice Emitted when an employee registers to a company
-    event EmployeeRegistered(uint256 indexed companyId, address indexed employee);
+    event EmployeeRegistered(uint256 indexed companyId, address indexed employee, string name);
 
     /// @notice Emitted when an employee is removed from a company
     event EmployeeRemoved(uint256 indexed companyId, address indexed employee);
@@ -111,6 +111,9 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
     /// @dev Uses +1 offset to distinguish company ID 0 from "not registered"
     mapping(address => uint256) private _employeeCompanies;
 
+    /// @notice employee address → display name
+    mapping(address => string) private _employeeNames;
+
     /// @notice Initializes the CompanyRegistry
     /// @param nft57bAddress The NFT57B contract address
     /// @param defaultAdmin Address that receives DEFAULT_ADMIN_ROLE
@@ -146,8 +149,9 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
     /// @notice Register an employee to a company (admin-only)
     /// @param employee The employee address to register
     /// @param companyId The company to assign the employee to
+    /// @param name The employee's display name
     /// @dev Only DEFAULT_ADMIN_ROLE or the company admin can register employees.
-    function registerEmployee(address employee, uint256 companyId) external {
+    function registerEmployee(address employee, uint256 companyId, string calldata name) external {
         if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && _companies[companyId].admin != msg.sender) {
             revert OnlyCompanyAdminOrAdmin(msg.sender, companyId);
         }
@@ -162,7 +166,8 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
         }
 
         _employeeCompanies[employee] = companyId + 1;
-        emit EmployeeRegistered(companyId, employee);
+        _employeeNames[employee] = name;
+        emit EmployeeRegistered(companyId, employee, name);
     }
 
     /// @notice Remove an employee from their company
@@ -180,6 +185,7 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
         }
 
         delete _employeeCompanies[employee];
+        delete _employeeNames[employee];
         emit EmployeeRemoved(companyId, employee);
     }
 
@@ -190,6 +196,31 @@ contract CompanyRegistry is AccessControl, ICompanyRegistry, ReentrancyGuard {
         uint256 stored = _employeeCompanies[employee];
         if (stored == 0) return 0;
         return stored - 1;
+    }
+
+    /// @notice Get the display name of an employee
+    /// @param employee The employee address
+    /// @return name The stored name (empty string if not registered)
+    function getEmployeeName(address employee) external view returns (string memory) {
+        return _employeeNames[employee];
+    }
+
+    /// @notice Update an employee's display name
+    /// @param employee The employee address
+    /// @param name The new display name
+    /// @dev Only DEFAULT_ADMIN_ROLE or the company admin can update.
+    function updateEmployeeName(address employee, string calldata name) external {
+        uint256 stored = _employeeCompanies[employee];
+        if (stored == 0) {
+            revert EmployeeNotRegistered(employee);
+        }
+
+        uint256 companyId = stored - 1;
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && _companies[companyId].admin != msg.sender) {
+            revert OnlyCompanyAdminOrAdmin(msg.sender, companyId);
+        }
+
+        _employeeNames[employee] = name;
     }
 
     /// @notice Check whether an address is registered as an employee
