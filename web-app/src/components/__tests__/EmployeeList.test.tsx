@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { EmployeeList } from '../EmployeeList'
 
 // --- Hoisted mocks ---
@@ -7,7 +7,7 @@ import { EmployeeList } from '../EmployeeList'
 const mockRefresh = vi.hoisted(() => vi.fn())
 const mockUseCompanyEmployees = vi.hoisted(() => vi.fn())
 const mockUseMinterRole = vi.hoisted(() => vi.fn())
-const mockUseRegisterEmployee = vi.hoisted(() => vi.fn())
+const mockUseUpdateEmployeeName = vi.hoisted(() => vi.fn())
 
 vi.mock('../../hooks/useCompanyEmployees', () => ({
   useCompanyEmployees: mockUseCompanyEmployees,
@@ -17,8 +17,21 @@ vi.mock('../../hooks/useMinterRole', () => ({
   useMinterRole: mockUseMinterRole,
 }))
 
-vi.mock('../../hooks/useRegisterEmployee', () => ({
-  useRegisterEmployee: mockUseRegisterEmployee,
+vi.mock('../../hooks/useUpdateEmployeeName', () => ({
+  useUpdateEmployeeName: mockUseUpdateEmployeeName,
+}))
+
+vi.mock('../AddEmployeeDialog', () => ({
+  AddEmployeeDialog: ({ open, onClose, onSuccess, companyId }: { open: boolean; onClose: () => void; onSuccess: () => void; companyId: bigint }) => {
+    if (!open) return null
+    return (
+      <div data-testid="add-employee-dialog">
+        <span data-testid="dialog-company-id">{companyId.toString()}</span>
+        <button onClick={onClose}>Close Dialog</button>
+        <button onClick={onSuccess}>Simulate Success</button>
+      </div>
+    )
+  },
 }))
 
 // --- Fixtures ---
@@ -28,11 +41,13 @@ const COMPANY_ID = 42n
 const MOCK_EMPLOYEES = [
   {
     employee: '0x1111111111111111111111111111111111111111' as `0x${string}`,
-    date: '2024-01-10',
+    name: 'Alice',
+    registrationDate: '1/10/2024',
   },
   {
     employee: '0x2222222222222222222222222222222222222222' as `0x${string}`,
-    date: '2024-02-15',
+    name: '',
+    registrationDate: '2/15/2024',
   },
 ]
 
@@ -59,6 +74,18 @@ function setupMinterRoleState(overrides: Record<string, unknown> = {}) {
   mockUseMinterRole.mockReturnValue({ ...defaults, ...overrides })
 }
 
+function setupUpdateEmployeeNameState(overrides: Record<string, unknown> = {}) {
+  const defaults = {
+    updateEmployeeName: vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`),
+    step: 'idle',
+    isConfirming: false,
+    txHash: undefined,
+    error: null,
+    reset: vi.fn(),
+  }
+  mockUseUpdateEmployeeName.mockReturnValue({ ...defaults, ...overrides })
+}
+
 function renderList(showMinterToggle = false) {
   return render(<EmployeeList companyId={COMPANY_ID} showMinterToggle={showMinterToggle} />)
 }
@@ -70,20 +97,14 @@ describe('EmployeeList', () => {
     vi.clearAllMocks()
     setupEmployeeState()
     setupMinterRoleState()
-    mockUseRegisterEmployee.mockReturnValue({
-      registerEmployee: vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`),
-      step: 'idle',
-      isConfirming: false,
-      txHash: undefined,
-      error: null,
-      reset: vi.fn(),
-    })
+    setupUpdateEmployeeNameState()
   })
 
-  it('renders column headers', () => {
+  it('renders column headers including Name', () => {
     renderList()
 
     expect(screen.getByText('Employee Address')).toBeInTheDocument()
+    expect(screen.getByText('Name')).toBeInTheDocument()
     expect(screen.getByText('Registration Date')).toBeInTheDocument()
   })
 
@@ -104,14 +125,20 @@ describe('EmployeeList', () => {
     expect(screen.getByText('No employees registered')).toBeInTheDocument()
   })
 
-  it('renders employee data rows with truncated addresses', () => {
+  it('renders employee data rows with truncated addresses and names', () => {
     renderList()
 
     expect(screen.getByText('0x1111...1111')).toBeInTheDocument()
     expect(screen.getByText('0x2222...2222')).toBeInTheDocument()
 
-    expect(screen.getByText('2024-01-10')).toBeInTheDocument()
-    expect(screen.getByText('2024-02-15')).toBeInTheDocument()
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+  })
+
+  it('shows "—" fallback for employees with empty name', () => {
+    renderList()
+
+    const dashes = screen.getAllByText('—')
+    expect(dashes.length).toBeGreaterThanOrEqual(1)
   })
 
   it('calls refresh when refresh button is clicked', () => {
@@ -141,7 +168,6 @@ describe('EmployeeList', () => {
     setupMinterRoleState({ isMinter: false })
     renderList(true)
 
-    // Both employees show "Grant" — verify at least one is rendered
     const grantButtons = screen.getAllByRole('button', { name: /grant minter role to/i })
     expect(grantButtons.length).toBeGreaterThanOrEqual(1)
     expect(grantButtons[0]).toHaveTextContent('Grant')
@@ -151,7 +177,6 @@ describe('EmployeeList', () => {
     setupMinterRoleState({ isMinter: true })
     renderList(true)
 
-    // Both employees show "Minter" — verify at least one is rendered
     const minterButtons = screen.getAllByRole('button', { name: /revoke minter role from/i })
     expect(minterButtons.length).toBeGreaterThanOrEqual(1)
     expect(minterButtons[0]).toHaveTextContent('Minter')
@@ -162,7 +187,6 @@ describe('EmployeeList', () => {
     setupMinterRoleState({ isMinter: false, grantMinter })
     renderList(true)
 
-    // Click the first Grant button
     const grantButtons = screen.getAllByRole('button', { name: /grant minter role to/i })
     fireEvent.click(grantButtons[0])
 
@@ -174,14 +198,13 @@ describe('EmployeeList', () => {
     setupMinterRoleState({ isMinter: true, revokeMinter })
     renderList(true)
 
-    // Click the first Revoke button
     const revokeButtons = screen.getAllByRole('button', { name: /revoke minter role from/i })
     fireEvent.click(revokeButtons[0])
 
     expect(revokeMinter).toHaveBeenCalledTimes(1)
   })
 
-  // ── Add Employee form ────────────────────────────────────────────────────────
+  // ── Add Employee dialog ────────────────────────────────────────────────────
 
   it('shows Add Employee button only when showMinterToggle is true', () => {
     renderList(false)
@@ -191,144 +214,88 @@ describe('EmployeeList', () => {
     expect(screen.getByText('Add Employee')).toBeInTheDocument()
   })
 
-  it('toggles the add form open and closed on button click', () => {
+  it('opens the AddEmployeeDialog when Add Employee is clicked', () => {
     renderList(true)
 
-    // Form is collapsed — no input visible
-    expect(screen.queryByPlaceholderText('0x...')).not.toBeInTheDocument()
-
-    // Open form
     fireEvent.click(screen.getByText('Add Employee'))
-    const input = screen.getByPlaceholderText('0x...')
+    expect(screen.getByTestId('add-employee-dialog')).toBeInTheDocument()
+  })
+
+  it('passes correct companyId to dialog', () => {
+    renderList(true)
+
+    fireEvent.click(screen.getByText('Add Employee'))
+    expect(screen.getByTestId('dialog-company-id')).toHaveTextContent('42')
+  })
+
+  it('calls refresh when dialog signals success', () => {
+    renderList(true)
+
+    fireEvent.click(screen.getByText('Add Employee'))
+    fireEvent.click(screen.getByText('Simulate Success'))
+
+    expect(mockRefresh).toHaveBeenCalled()
+  })
+
+  it('closes dialog when dialog signals close', () => {
+    renderList(true)
+
+    fireEvent.click(screen.getByText('Add Employee'))
+    expect(screen.getByTestId('add-employee-dialog')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Close Dialog'))
+    expect(screen.queryByTestId('add-employee-dialog')).not.toBeInTheDocument()
+  })
+
+  // ── Inline name edit ───────────────────────────────────────────────────────
+
+  it('does not enter edit mode on name click when showMinterToggle is false', () => {
+    renderList(false)
+
+    fireEvent.click(screen.getByText('Alice'))
+    expect(screen.queryByRole('textbox', { name: /employee name/i })).not.toBeInTheDocument()
+  })
+
+  it('clicking name in admin mode enters edit mode', async () => {
+    renderList(true)
+
+    const nameSpan = screen.getByText('Alice')
+    fireEvent.click(nameSpan)
+
+    const input = screen.getByRole('textbox', { name: /employee name/i })
     expect(input).toBeInTheDocument()
-
-    // Button text switches to Cancel
-    expect(screen.getByText('Cancel')).toBeInTheDocument()
-
-    // Close form
-    fireEvent.click(screen.getByText('Cancel'))
-    expect(screen.queryByPlaceholderText('0x...')).not.toBeInTheDocument()
-    expect(screen.queryByText('Cancel')).not.toBeInTheDocument()
+    expect(input).toHaveValue('Alice')
   })
 
-  it('disables the Add button when address is empty or invalid', () => {
+  it('saves name via useUpdateEmployeeName on Enter', async () => {
+    const updateEmployeeName = vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`)
+    setupUpdateEmployeeNameState({ updateEmployeeName })
     renderList(true)
-    fireEvent.click(screen.getByText('Add Employee'))
 
-    const addButton = screen.getByRole('button', { name: 'Add' })
-    expect(addButton).toBeDisabled()
+    fireEvent.click(screen.getByText('Alice'))
+    const input = screen.getByRole('textbox', { name: /employee name/i })
 
-    // Partial address — still invalid
-    fireEvent.change(screen.getByPlaceholderText('0x...'), {
-      target: { value: '0xabc' },
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'Alice Updated' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
     })
-    expect(addButton).toBeDisabled()
 
-    // Wrong length (41 chars)
-    fireEvent.change(screen.getByPlaceholderText('0x...'), {
-      target: { value: '0x' + 'a'.repeat(39) },
-    })
-    expect(addButton).toBeDisabled()
+    expect(updateEmployeeName).toHaveBeenCalledWith(
+      '0x1111111111111111111111111111111111111111',
+      'Alice Updated',
+    )
   })
 
-  it('enables the Add button when address is valid (0x + 40 hex chars)', () => {
+  it('cancels edit and restores original name on Escape', () => {
     renderList(true)
-    fireEvent.click(screen.getByText('Add Employee'))
 
-    const validAddr = '0x' + 'abCD1234'.repeat(5) // 40 hex chars
-    fireEvent.change(screen.getByPlaceholderText('0x...'), {
-      target: { value: validAddr },
-    })
+    fireEvent.click(screen.getByText('Alice'))
+    const input = screen.getByRole('textbox', { name: /employee name/i })
 
-    expect(screen.getByRole('button', { name: 'Add' })).not.toBeDisabled()
-  })
+    fireEvent.change(input, { target: { value: 'Changed' } })
+    fireEvent.keyDown(input, { key: 'Escape' })
 
-  it('calls registerEmployee with address and companyId on valid submit', async () => {
-    const registerEmployee = vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`)
-    mockUseRegisterEmployee.mockReturnValue({
-      registerEmployee,
-      step: 'idle',
-      isConfirming: false,
-      txHash: undefined,
-      error: null,
-      reset: vi.fn(),
-    })
-
-    renderList(true)
-    fireEvent.click(screen.getByText('Add Employee'))
-
-    const validAddr = '0x' + 'ab'.repeat(20)
-    fireEvent.change(screen.getByPlaceholderText('0x...'), {
-      target: { value: validAddr },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
-
-    await vi.waitFor(() => {
-      expect(registerEmployee).toHaveBeenCalledWith(validAddr, COMPANY_ID)
-    })
-  })
-
-  it('collapses form, clears input, and calls refresh after successful add', async () => {
-    const registerEmployee = vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`)
-    mockUseRegisterEmployee.mockReturnValue({
-      registerEmployee,
-      step: 'idle',
-      isConfirming: false,
-      txHash: undefined,
-      error: null,
-      reset: vi.fn(),
-    })
-
-    renderList(true)
-    fireEvent.click(screen.getByText('Add Employee'))
-
-    const validAddr = '0x' + 'ab'.repeat(20)
-    fireEvent.change(screen.getByPlaceholderText('0x...'), {
-      target: { value: validAddr },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
-
-    await vi.waitFor(() => {
-      // Form collapsed: input gone, button back to "Add Employee"
-      expect(screen.queryByPlaceholderText('0x...')).not.toBeInTheDocument()
-      expect(screen.getByText('Add Employee')).toBeInTheDocument()
-      expect(mockRefresh).toHaveBeenCalled()
-    })
-  })
-
-  it('displays error message below input when addEmployee fails', () => {
-    mockUseRegisterEmployee.mockReturnValue({
-      registerEmployee: vi.fn().mockResolvedValue('0xTxHash' as `0x${string}`),
-      step: 'idle',
-      isConfirming: false,
-      txHash: undefined,
-      error: new Error('Already registered'),
-      reset: vi.fn(),
-    })
-
-    renderList(true)
-    fireEvent.click(screen.getByText('Add Employee'))
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Already registered')
-  })
-
-  it('shows loading state on Add button and disables input during confirmation', () => {
-    mockUseRegisterEmployee.mockReturnValue({
-      registerEmployee: vi.fn(),
-      step: 'confirming',
-      isConfirming: true,
-      txHash: '0xHash' as `0x${string}`,
-      error: null,
-      reset: vi.fn(),
-    })
-
-    renderList(true)
-    fireEvent.click(screen.getByText('Add Employee'))
-
-    const input = screen.getByPlaceholderText('0x...')
-    expect(input).toBeDisabled()
-
-    const addButton = screen.getByRole('button', { name: '...' })
-    expect(addButton).toBeDisabled()
+    expect(screen.queryByRole('textbox', { name: /employee name/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Alice')).toBeInTheDocument()
   })
 })

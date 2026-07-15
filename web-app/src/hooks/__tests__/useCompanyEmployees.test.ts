@@ -5,6 +5,7 @@ import { useCompanyEmployees } from '../useCompanyEmployees'
 // --- Hoisted mocks ---
 
 const mockGetLogs = vi.hoisted(() => vi.fn())
+const mockGetBlock = vi.hoisted(() => vi.fn())
 const mockUsePublicClient = vi.hoisted(() => vi.fn())
 const mockGetContractAddresses = vi.hoisted(() =>
   vi.fn(() => ({
@@ -32,21 +33,27 @@ const MOCK_EVENTS = [
     args: {
       companyId: 42n,
       employee: '0x1111111111111111111111111111111111111111' as `0x${string}`,
+      name: 'Alice',
     },
+    blockNumber: 100n,
   },
   {
     args: {
       companyId: 42n,
       employee: '0x2222222222222222222222222222222222222222' as `0x${string}`,
+      name: 'Bob',
     },
+    blockNumber: 200n,
   },
 ]
 
 describe('useCompanyEmployees', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetBlock.mockResolvedValue({ timestamp: 1704844800n })
     mockUsePublicClient.mockReturnValue({
       getLogs: mockGetLogs,
+      getBlock: mockGetBlock,
     })
   })
 
@@ -65,6 +72,7 @@ describe('useCompanyEmployees', () => {
     expect(result.current.employees).toHaveLength(2)
     expect(result.current.employees[0]).toMatchObject({
       employee: '0x1111111111111111111111111111111111111111',
+      name: 'Alice',
     })
     expect(result.current.employees[1].employee).toBe(
       '0x2222222222222222222222222222222222222222',

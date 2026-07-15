@@ -32,6 +32,7 @@ vi.mock('../../config/contracts', async (importOriginal) => {
 const MOCK_HASH = '0xTxHash' as `0x${string}`
 const COMPANY_ID = 42n
 const EMPLOYEE_ADDRESS = '0xEmployee' as `0x${string}`
+const EMPLOYEE_NAME = 'Alice'
 
 // --- Setup ---
 
@@ -101,9 +102,11 @@ describe('useRegisterEmployee', () => {
 
       let hash: `0x${string}` | undefined
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID).then((h) => {
-          hash = h
-        })
+        result.current
+          .registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, EMPLOYEE_NAME)
+          .then((h) => {
+            hash = h
+          })
       })
 
       await waitFor(() => {
@@ -123,7 +126,11 @@ describe('useRegisterEmployee', () => {
       const { result } = renderHook(() => useRegisterEmployee())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID)
+        result.current.registerEmployee(
+          EMPLOYEE_ADDRESS,
+          COMPANY_ID,
+          EMPLOYEE_NAME,
+        )
       })
 
       await waitFor(() => {
@@ -134,8 +141,8 @@ describe('useRegisterEmployee', () => {
         address: '0xRegistry',
         abi: expect.any(Array),
         functionName: 'registerEmployee',
-        args: [EMPLOYEE_ADDRESS, COMPANY_ID],
-        gas: 300_000n,
+        args: [EMPLOYEE_ADDRESS, COMPANY_ID, EMPLOYEE_NAME],
+        gas: 350_000n,
       })
     })
   })
@@ -149,9 +156,11 @@ describe('useRegisterEmployee', () => {
       const { result } = renderHook(() => useRegisterEmployee())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID).catch(() => {
-          /* expected */
-        })
+        result.current
+          .registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, EMPLOYEE_NAME)
+          .catch(() => {
+            /* expected */
+          })
       })
 
       await waitFor(() => {
@@ -180,9 +189,11 @@ describe('useRegisterEmployee', () => {
       const { result } = renderHook(() => useRegisterEmployee())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID).catch(() => {
-          /* expected */
-        })
+        result.current
+          .registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID, EMPLOYEE_NAME)
+          .catch(() => {
+            /* expected */
+          })
       })
 
       await waitFor(() => {
@@ -203,7 +214,11 @@ describe('useRegisterEmployee', () => {
       const { result } = renderHook(() => useRegisterEmployee())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID)
+        result.current.registerEmployee(
+          EMPLOYEE_ADDRESS,
+          COMPANY_ID,
+          EMPLOYEE_NAME,
+        )
       })
 
       await waitFor(() => {
@@ -212,7 +227,11 @@ describe('useRegisterEmployee', () => {
 
       await act(async () => {
         await expect(
-          result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID),
+          result.current.registerEmployee(
+            EMPLOYEE_ADDRESS,
+            COMPANY_ID,
+            EMPLOYEE_NAME,
+          ),
         ).rejects.toThrow('already in progress')
       })
     })
@@ -235,7 +254,11 @@ describe('useRegisterEmployee', () => {
       const { result } = renderHook(() => useRegisterEmployee())
 
       act(() => {
-        result.current.registerEmployee(EMPLOYEE_ADDRESS, COMPANY_ID)
+        result.current.registerEmployee(
+          EMPLOYEE_ADDRESS,
+          COMPANY_ID,
+          EMPLOYEE_NAME,
+        )
       })
 
       await waitFor(() => {

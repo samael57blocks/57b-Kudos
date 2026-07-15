@@ -132,44 +132,6 @@
   gap: 8px;
 }
 
-.addForm {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.addFormInput {
-  padding: 6px 10px;
-  font-size: 12px;
-  font-family: monospace;
-  border: 1px solid var(--border, #e5e4e7);
-  border-radius: 6px;
-  width: 320px;
-}
-
-.addFormButton {
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  background: var(--accent, #aa3bff);
-  color: #fff;
-}
-
-.addFormButtonDisabled {
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  border: none;
-  border-radius: 6px;
-  cursor: not-allowed;
-  background: var(--accent, #aa3bff);
-  color: #fff;
-  opacity: 0.5;
-}
-
 .addFormToggle {
   padding: 6px 14px;
   font-size: 12px;
@@ -181,8 +143,22 @@
   color: var(--text, #6b6375);
 }
 
-.addFormError {
-  color: #ef4444;
+.nameEditable {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--border, #e5e4e7);
+}
+
+.nameEditable:hover {
+  color: var(--accent, #aa3bff);
+}
+
+.nameInput {
+  padding: 4px 8px;
   font-size: 13px;
-  margin: 0;
+  border: 1px solid var(--accent, #aa3bff);
+  border-radius: 4px;
+  background: var(--bg, #fff);
+  color: var(--text-h, #08060d);
+  width: 100%;
+  max-width: 200px;
 }

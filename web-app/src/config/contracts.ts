@@ -64,7 +64,9 @@ export const COMPANY_REGISTRY_ABI = parseAbi([
   'function nft57b() external view returns (address)',
   // Write
   'function registerCompany(string calldata name, address adminWallet) external returns (uint256 companyId)',
-  'function registerEmployee(address employee, uint256 companyId) external',
+  'function getEmployeeName(address employee) external view returns (string)',
+  'function registerEmployee(address employee, uint256 companyId, string calldata name) external',
+  'function updateEmployeeName(address employee, string calldata name) external',
   'function recognize(address employee, string calldata uri) external returns (uint256 tokenId)',
   // AccessControl
   'function MINTER_ROLE() external pure returns (bytes32)',
@@ -74,7 +76,7 @@ export const COMPANY_REGISTRY_ABI = parseAbi([
   'function hasRole(bytes32 role, address account) external view returns (bool)',
   // Events
   'event CompanyRegistered(uint256 indexed companyId, string name, address indexed admin)',
-  'event EmployeeRegistered(uint256 indexed companyId, address indexed employee)',
+  'event EmployeeRegistered(uint256 indexed companyId, address indexed employee, string name)',
   'event Recognized(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee)',
   'event MinterRoleGranted(uint256 indexed companyId, address indexed employee)',
   'event MinterRoleRevoked(uint256 indexed companyId, address indexed employee)',
