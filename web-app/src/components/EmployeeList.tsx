@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useCompanyEmployees, type EmployeeData } from '../hooks/useCompanyEmployees'
 import { useMinterRole } from '../hooks/useMinterRole'
-import { useRegisterEmployee } from '../hooks/useRegisterEmployee'
+import { useUpdateEmployeeName } from '../hooks/useUpdateEmployeeName'
 import { formatAddress } from '../utils/format'
+import { AddEmployeeDialog } from './AddEmployeeDialog'
 import styles from './EmployeeList.module.css'
 
 // ── EmployeeRow sub-component ─────────────────────────────────────────────────
 
 /**
- * Render a single employee row with address, date, and optionally a Minter role toggle.
+ * Render a single employee row with address, name, date, and optionally
+ * a Minter role toggle and inline name edit.
  *
  * Extracted as a separate component so each row can independently call
  * the `useMinterRole` hook (hooks cannot be called inside loops/map).
@@ -16,13 +18,36 @@ import styles from './EmployeeList.module.css'
 function EmployeeRow({
   employee,
   showMinterToggle,
+  onNameUpdated,
 }: {
   employee: EmployeeData
   showMinterToggle: boolean
+  onNameUpdated: () => void
 }) {
   const { isMinter, isLoading, grantMinter, revokeMinter, error } = useMinterRole(
     showMinterToggle ? employee.employee : undefined,
   )
+  const { updateEmployeeName, step: updateStep, reset: updateReset } = useUpdateEmployeeName()
+
+  const [editing, setEditing] = useState(false)
+  const [nameValue, setNameValue] = useState(employee.name)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  useEffect(() => {
+    if (updateStep === 'success') {
+      setEditing(false)
+      updateReset()
+      onNameUpdated()
+    }
+  }, [updateStep, updateReset, onNameUpdated])
+
+  useEffect(() => {
+    setNameValue(employee.name)
+  }, [employee.name])
 
   const handleToggle = async () => {
     try {
@@ -36,10 +61,61 @@ function EmployeeRow({
     }
   }
 
+  const handleNameClick = () => {
+    if (!showMinterToggle) return
+    setEditing(true)
+  }
+
+  const handleNameSave = async () => {
+    const trimmed = nameValue.trim()
+    if (trimmed && trimmed !== employee.name) {
+      try {
+        await updateEmployeeName(employee.employee, trimmed)
+      } catch {
+        // Error handled by useUpdateEmployeeName
+      }
+    } else {
+      setNameValue(employee.name)
+      setEditing(false)
+    }
+  }
+
+  const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleNameSave()
+    } else if (e.key === 'Escape') {
+      setNameValue(employee.name)
+      setEditing(false)
+    }
+  }
+
   return (
     <tr>
       <td className={`${styles.td} ${styles.mono}`}>{formatAddress(employee.employee)}</td>
-      <td className={styles.td}>{employee.date || '—'}</td>
+      <td className={styles.td}>
+        {editing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={nameValue}
+            onChange={(e) => setNameValue(e.target.value)}
+            onBlur={handleNameSave}
+            onKeyDown={handleNameKeyDown}
+            disabled={updateStep === 'confirming'}
+            className={styles.nameInput}
+            aria-label="Employee name"
+          />
+        ) : (
+          <span
+            className={showMinterToggle ? styles.nameEditable : undefined}
+            onClick={handleNameClick}
+            title={showMinterToggle ? 'Click to edit name' : undefined}
+          >
+            {employee.name || '—'}
+          </span>
+        )}
+      </td>
+      <td className={styles.td}>{employee.registrationDate || '—'}</td>
       {showMinterToggle && (
         <td className={styles.minterColumn}>
           <button
@@ -78,41 +154,14 @@ interface EmployeeListProps {
 
 /**
  * Table of employees registered to a company, showing employee address,
- * registration date, and optionally a Minter role toggle button per row.
+ * name, registration date, and optionally a Minter role toggle button per row.
  *
  * Uses `useCompanyEmployees` for the employee list and `useMinterRole`
  * per row for role state (only when showMinterToggle is true).
  */
 export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeListProps) {
   const { employees, isLoading, error, refresh } = useCompanyEmployees(companyId)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [addressInput, setAddressInput] = useState('')
-  const { registerEmployee, step: addStep, error: addError, reset: addReset } = useRegisterEmployee()
-
-  const isValidAddress =
-    addressInput.startsWith('0x') &&
-    addressInput.length === 42 &&
-    /^0x[0-9a-fA-F]{40}$/.test(addressInput)
-
-  const isAdding = addStep === 'confirming'
-
-  const handleAddEmployee = async () => {
-    if (!isValidAddress) return
-    try {
-      await registerEmployee(addressInput as `0x${string}`, companyId)
-      setAddressInput('')
-      setShowAddForm(false)
-      refresh()
-    } catch {
-      // error is captured by the hook
-    }
-  }
-
-  const toggleAddForm = () => {
-    setShowAddForm(!showAddForm)
-    setAddressInput('')
-    addReset()
-  }
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   // ── Loading state ─────────────────────────────────────────────────────────
 
@@ -126,6 +175,7 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
           <thead>
             <tr>
               <th className={styles.th}>Employee Address</th>
+              <th className={styles.th}>Name</th>
               <th className={styles.th}>Registration Date</th>
               {showMinterToggle && <th className={styles.th}>Minter Role</th>}
             </tr>
@@ -133,6 +183,7 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
           <tbody>
             {[1, 2, 3].map((i) => (
               <tr key={i} data-testid="skeleton-row">
+                <td className={styles.td}><div className={styles.skeleton} /></td>
                 <td className={styles.td}><div className={styles.skeleton} /></td>
                 <td className={styles.td}><div className={styles.skeleton} /></td>
                 {showMinterToggle && <td className={styles.td}><div className={styles.skeleton} /></td>}
@@ -152,43 +203,11 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
         <div className={styles.header}>
           <h3 className={styles.title}>Employees</h3>
           <div className={styles.headerActions}>
-            {showAddForm && (
-              <div className={styles.addForm}>
-                <input
-                  type="text"
-                  placeholder="0x..."
-                  value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
-                  disabled={isAdding}
-                  className={styles.addFormInput}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddEmployee}
-                  disabled={!isValidAddress || isAdding}
-                  className={
-                    !isValidAddress || isAdding
-                      ? styles.addFormButtonDisabled
-                      : styles.addFormButton
-                  }
-                >
-                  {isAdding ? '...' : 'Add'}
-                </button>
-              </div>
-            )}
-            {showMinterToggle && (
-              <button type="button" onClick={toggleAddForm} className={styles.addFormToggle}>
-                {showAddForm ? 'Cancel' : 'Add Employee'}
-              </button>
-            )}
             <button type="button" onClick={refresh} className={styles.refreshButton}>
               Retry
             </button>
           </div>
         </div>
-        {showAddForm && addError && (
-          <p className={styles.addFormError} role="alert">{addError.message}</p>
-        )}
         <p className={`${styles.empty}`} style={{ color: '#e53e3e' }} role="alert">
           {error.message}
         </p>
@@ -204,41 +223,20 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
         <div className={styles.header}>
           <h3 className={styles.title}>Employees</h3>
           <div className={styles.headerActions}>
-            {showAddForm && (
-              <div className={styles.addForm}>
-                <input
-                  type="text"
-                  placeholder="0x..."
-                  value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
-                  disabled={isAdding}
-                  className={styles.addFormInput}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddEmployee}
-                  disabled={!isValidAddress || isAdding}
-                  className={
-                    !isValidAddress || isAdding
-                      ? styles.addFormButtonDisabled
-                      : styles.addFormButton
-                  }
-                >
-                  {isAdding ? '...' : 'Add'}
-                </button>
-              </div>
-            )}
             {showMinterToggle && (
-              <button type="button" onClick={toggleAddForm} className={styles.addFormToggle}>
-                {showAddForm ? 'Cancel' : 'Add Employee'}
+              <button type="button" onClick={() => setDialogOpen(true)} className={styles.addFormToggle}>
+                Add Employee
               </button>
             )}
           </div>
         </div>
-        {showAddForm && addError && (
-          <p className={styles.addFormError} role="alert">{addError.message}</p>
-        )}
         <p className={styles.empty}>No employees registered</p>
+        <AddEmployeeDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          onSuccess={() => { setDialogOpen(false); refresh() }}
+          companyId={companyId}
+        />
       </div>
     )
   }
@@ -250,33 +248,9 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
       <div className={styles.header}>
         <h3 className={styles.title}>Employees</h3>
         <div className={styles.headerActions}>
-          {showAddForm && (
-            <div className={styles.addForm}>
-              <input
-                type="text"
-                placeholder="0x..."
-                value={addressInput}
-                onChange={(e) => setAddressInput(e.target.value)}
-                disabled={isAdding}
-                className={styles.addFormInput}
-              />
-              <button
-                type="button"
-                onClick={handleAddEmployee}
-                disabled={!isValidAddress || isAdding}
-                className={
-                  !isValidAddress || isAdding
-                    ? styles.addFormButtonDisabled
-                    : styles.addFormButton
-                }
-              >
-                {isAdding ? '...' : 'Add'}
-              </button>
-            </div>
-          )}
           {showMinterToggle && (
-            <button type="button" onClick={toggleAddForm} className={styles.addFormToggle}>
-              {showAddForm ? 'Cancel' : 'Add Employee'}
+            <button type="button" onClick={() => setDialogOpen(true)} className={styles.addFormToggle}>
+              Add Employee
             </button>
           )}
           <button type="button" onClick={refresh} className={styles.refreshButton}>
@@ -284,13 +258,11 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
           </button>
         </div>
       </div>
-      {showAddForm && addError && (
-        <p className={styles.addFormError} role="alert">{addError.message}</p>
-      )}
       <table className={styles.table}>
         <thead>
           <tr>
             <th className={styles.th}>Employee Address</th>
+            <th className={styles.th}>Name</th>
             <th className={styles.th}>Registration Date</th>
             {showMinterToggle && <th className={styles.th}>Minter Role</th>}
           </tr>
@@ -301,10 +273,17 @@ export function EmployeeList({ companyId, showMinterToggle = false }: EmployeeLi
               key={emp.employee}
               employee={emp}
               showMinterToggle={showMinterToggle}
+              onNameUpdated={refresh}
             />
           ))}
         </tbody>
       </table>
+      <AddEmployeeDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSuccess={() => { setDialogOpen(false); refresh() }}
+        companyId={companyId}
+      />
     </div>
   )
 }

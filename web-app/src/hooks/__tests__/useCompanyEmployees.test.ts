@@ -50,6 +50,7 @@ const MOCK_EVENTS = [
 describe('useCompanyEmployees', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetBlock.mockResolvedValue({ timestamp: 1704844800n })
     mockUsePublicClient.mockReturnValue({
       getLogs: mockGetLogs,
       getBlock: mockGetBlock,
