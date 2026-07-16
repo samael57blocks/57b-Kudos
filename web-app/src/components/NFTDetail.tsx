@@ -2,6 +2,7 @@ import { useEffect, useCallback, useMemo } from 'react'
 import { useTokenMetadata } from '../hooks/useTokenMetadata'
 import { RecognitionBadge } from './RecognitionBadge'
 import { getContractAddresses } from '../config/contracts'
+import { gatewayURL, parseCID } from '../utils/ipfs'
 import type { EmployeeNFTData } from '../hooks/useEmployeeNFTs'
 import styles from './NFTDetail.module.css'
 
@@ -59,7 +60,12 @@ export function NFTDetail({ nft, isOpen, onClose }: NFTDetailProps) {
   const metaDescription = metadata?.description as string | undefined
   const metaValue = metadata?.value as string | undefined
   const metaDate = metadata?.date as string | undefined
-  const metaImage = metadata?.image as string | undefined
+  const rawImage = metadata?.image as string | undefined
+  const metaImage = useMemo(() => {
+    if (!rawImage) return undefined
+    const cid = parseCID(rawImage)
+    return cid ? gatewayURL(cid) : rawImage
+  }, [rawImage])
 
   return (
     <div

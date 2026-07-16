@@ -53,7 +53,7 @@ function cacheSet(cid: string, data: unknown): void {
  * Extract CID from an ipfs:// URI.
  * Returns undefined if the URI is not a valid ipfs:// URI.
  */
-function parseCID(uri: string): string | undefined {
+export function parseCID(uri: string): string | undefined {
   if (!uri.startsWith('ipfs://')) return undefined
   return uri.slice(7)
 }
