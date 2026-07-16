@@ -36,7 +36,7 @@ export function buildMetadata(p: MetadataParams): MetadataResult {
   return {
     name: p.name,
     description: p.description,
-    image: p.imageCid ? `ipfs://${p.imageCid}` : '',
+    image: p.imageCid ? `ipfs://${p.imageCid.replace(/^ipfs:\/\//, '')}` : '',
     attributes: [
       { trait_type: 'Value', value: p.value },
       { trait_type: 'Date', value: p.date },

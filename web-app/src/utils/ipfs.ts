@@ -51,11 +51,14 @@ function cacheSet(cid: string, data: unknown): void {
 
 /**
  * Extract CID from an ipfs:// URI.
+ * Handles both `ipfs://<CID>` and `ipfs://ipfs://<CID>` (double prefix).
  * Returns undefined if the URI is not a valid ipfs:// URI.
  */
-function parseCID(uri: string): string | undefined {
+export function parseCID(uri: string): string | undefined {
   if (!uri.startsWith('ipfs://')) return undefined
-  return uri.slice(7)
+  const rest = uri.slice(7) // strip first ipfs://
+  // Handle double prefix: ipfs://ipfs://<CID>
+  return rest.startsWith('ipfs://') ? rest.slice(7) : rest
 }
 
 /**
