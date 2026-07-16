@@ -198,6 +198,150 @@ describe('useMintNFT', () => {
     })
   })
 
+  describe('functionName parameterization', () => {
+    it('defaults to recognize when no contractFunction is provided', async () => {
+      const { result } = renderHook(() => useMintNFT(42n))
+
+      act(() => {
+        result.current.mint(MOCK_ACHIEVEMENT)
+      })
+
+      await waitFor(() => {
+        expect(result.current.step).toBe('success')
+      })
+
+      expect(mockWriteContractAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ functionName: 'recognize' }),
+      )
+    })
+
+    it('explicitly calls recognize when contractFunction is recognize', async () => {
+      const { result } = renderHook(() =>
+        useMintNFT(42n, 'recognize'),
+      )
+
+      act(() => {
+        result.current.mint(MOCK_ACHIEVEMENT)
+      })
+
+      await waitFor(() => {
+        expect(result.current.step).toBe('success')
+      })
+
+      expect(mockWriteContractAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ functionName: 'recognize' }),
+      )
+    })
+
+    it('calls mintKudos when contractFunction is mintKudos', async () => {
+      const { result } = renderHook(() =>
+        useMintNFT(42n, 'mintKudos'),
+      )
+
+      act(() => {
+        result.current.mint(MOCK_ACHIEVEMENT)
+      })
+
+      await waitFor(() => {
+        expect(result.current.step).toBe('success')
+      })
+
+      expect(mockWriteContractAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ functionName: 'mintKudos' }),
+      )
+    })
+
+    it('both paths receive identical args structure', async () => {
+      // recognize path
+      const { result: r1 } = renderHook(() => useMintNFT(42n, 'recognize'))
+      act(() => { r1.current.mint(MOCK_ACHIEVEMENT) })
+      await waitFor(() => { expect(r1.current.step).toBe('success') })
+
+      const recognizeArgs = mockWriteContractAsync.mock.calls[0][0].args
+
+      mockWriteContractAsync.mockClear()
+
+      // mintKudos path
+      const { result: r2 } = renderHook(() => useMintNFT(42n, 'mintKudos'))
+      act(() => { r2.current.mint(MOCK_ACHIEVEMENT) })
+      await waitFor(() => { expect(r2.current.step).toBe('success') })
+
+      const mintKudosArgs = mockWriteContractAsync.mock.calls[0][0].args
+
+      expect(recognizeArgs).toEqual([MOCK_ACHIEVEMENT.employee, 'ipfs://QmUploaded'])
+      expect(mintKudosArgs).toEqual([MOCK_ACHIEVEMENT.employee, 'ipfs://QmUploaded'])
+    })
+
+    it('state machine works identically for both functions', async () => {
+      for (const fn of ['recognize', 'mintKudos'] as const) {
+        mockWriteContractAsync.mockClear()
+        const { result } = renderHook(() => useMintNFT(42n, fn))
+
+        expect(result.current.step).toBe('idle')
+
+        act(() => { result.current.mint(MOCK_ACHIEVEMENT) })
+
+        await waitFor(() => {
+          expect(result.current.step).not.toBe('idle')
+        })
+        await waitFor(() => {
+          expect(result.current.step).toBe('success')
+        })
+
+        expect(result.current.error).toBeNull()
+        expect(result.current.txHash).toBe(MOCK_HASH)
+      }
+    })
+
+    it('error handling is function-agnostic', async () => {
+      mockWriteContractAsync.mockRejectedValue(new Error('Revert'))
+
+      for (const fn of ['recognize', 'mintKudos'] as const) {
+        mockWriteContractAsync.mockRejectedValue(new Error('Revert'))
+        const { result } = renderHook(() => useMintNFT(42n, fn))
+
+        act(() => {
+          result.current.mint(MOCK_ACHIEVEMENT).catch(() => {})
+        })
+
+        await waitFor(() => {
+          expect(result.current.step).toBe('error')
+        })
+        expect(result.current.error?.message).toContain('Revert')
+
+        act(() => { result.current.reset() })
+        expect(result.current.step).toBe('idle')
+      }
+    })
+
+    it('double-submit guard works for both functions', async () => {
+      for (const fn of ['recognize', 'mintKudos'] as const) {
+        mockWriteContractAsync.mockClear()
+        setupMocks({ wtfrIsSuccess: false })
+
+        const { result } = renderHook(() => useMintNFT(42n, fn))
+
+        // First mint — slow
+        mockWriteContractAsync.mockImplementation(
+          () => new Promise<`0x${string}`>(() => {}),
+        )
+
+        act(() => { result.current.mint(MOCK_ACHIEVEMENT) })
+
+        await waitFor(() => {
+          expect(result.current.step).toBe('confirming')
+        })
+
+        // Second mint while first is in flight
+        await expect(
+          result.current.mint(MOCK_ACHIEVEMENT),
+        ).rejects.toThrow('Mint already in progress')
+
+        expect(mockWriteContractAsync).toHaveBeenCalledTimes(1)
+      }
+    })
+  })
+
   describe('reset', () => {
     it('resets to idle state after success', async () => {
       const { result } = renderHook(() => useMintNFT(42n))
