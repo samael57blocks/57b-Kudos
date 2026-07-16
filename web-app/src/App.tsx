@@ -22,7 +22,7 @@ function App() {
     {
       path: '/portfolio',
       element: (
-        <ProtectedRoute allowedRoles={['employee', 'minter']}>
+        <ProtectedRoute allowedRoles={['employee', 'minter', 'company_admin']}>
           <EmployeePortfolio />
         </ProtectedRoute>
       ),
