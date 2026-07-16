@@ -18,6 +18,7 @@ export interface Achievement {
   value: string
   date: string
   employeeName: string
+  category?: string
   /** Optional IPFS CID for attached image */
   imageCid?: string
 }
@@ -131,6 +132,7 @@ export function useMintNFT(
           value: achievement.value,
           date: achievement.date,
           employeeName: achievement.employeeName,
+          category: achievement.category,
           imageCid: achievement.imageCid,
         }
         const metadata = buildMetadata(params)

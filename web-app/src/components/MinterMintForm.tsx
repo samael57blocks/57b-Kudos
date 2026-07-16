@@ -3,6 +3,8 @@ import { useMintNFT } from '../hooks/useMintNFT'
 import { uploadImage } from '../utils/ipfs'
 import { buildExplorerTxUrl } from '../utils/format'
 import type { EmployeeData } from '../hooks/useCompanyEmployees'
+import { CategoryPicker } from './CategoryPicker'
+import { BADGE_CONFIG, type BadgeCategory } from '../lib/recognition-data'
 import styles from './MinterMintForm.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -26,6 +28,7 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
 
   // Form fields
   const [employee, setEmployee] = useState('')
+  const [category, setCategory] = useState<BadgeCategory | ''>('')
   const [value, setValue] = useState('')
   const [date, setDate] = useState(todayString())
   const [comments, setComments] = useState('')
@@ -43,6 +46,7 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
   useEffect(() => {
     if (step === 'success' && prevStepRef.current !== 'success') {
       setEmployee('')
+      setCategory('')
       setValue('')
       setDate(todayString())
       setComments('')
@@ -73,6 +77,15 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
       return
     }
 
+    // Validate category selection
+    if (!category) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        category: 'Please select a recognition category',
+      }))
+      return
+    }
+
     // Validate value
     if (!value || isNaN(Number(value))) {
       setValidationErrors((prev) => ({
@@ -98,16 +111,18 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
     // Find employee name from the selected address
     const emp = employees.find((e) => e.employee === employee)
     const employeeName = emp?.name ?? 'Unknown'
+    const categoryConfig = BADGE_CONFIG[category]
 
     // Call mint
     try {
       await mint({
         employee: employee as `0x${string}`,
-        name: 'Employee Recognition',
-        description: comments || 'Recognition NFT',
+        name: categoryConfig.description.replace('Awarded for ', ''),
+        description: comments || categoryConfig.description,
         value,
         date: date || todayString(),
         employeeName,
+        category,
         imageCid,
       })
     } catch {
@@ -152,6 +167,14 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
           </span>
         )}
       </label>
+
+      {/* Category Picker */}
+      <CategoryPicker
+        value={category}
+        onChange={setCategory}
+        disabled={isFormDisabled}
+        error={validationErrors.category}
+      />
 
       {/* Value */}
       <label className={styles.label}>

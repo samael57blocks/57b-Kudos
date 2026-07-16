@@ -9,6 +9,7 @@ export interface MetadataParams {
   value: string
   date: string
   employeeName: string
+  category?: string
   imageCid?: string
 }
 
@@ -41,6 +42,7 @@ export function buildMetadata(p: MetadataParams): MetadataResult {
       { trait_type: 'Value', value: p.value },
       { trait_type: 'Date', value: p.date },
       { trait_type: 'Employee', value: p.employeeName },
+      ...(p.category ? [{ trait_type: 'Category', value: p.category }] : []),
     ],
   }
 }

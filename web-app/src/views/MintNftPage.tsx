@@ -5,6 +5,7 @@ import { useCompanyEmployees } from '../hooks/useCompanyEmployees'
 import { MinterMintForm } from '../components/MinterMintForm'
 import styles from './MintNftPage.module.css'
 
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MintNftPage() {

@@ -79,7 +79,7 @@ function renderForm(
 }
 
 function fillForm(
-  overrides: { employeeIndex?: number; value?: string; date?: string; comments?: string } = {},
+  overrides: { employeeIndex?: number; value?: string; date?: string; comments?: string; category?: string } = {},
 ) {
   const val = overrides.value ?? '100'
   const empIndex = overrides.employeeIndex ?? 0
@@ -87,6 +87,11 @@ function fillForm(
   fireEvent.change(screen.getByLabelText('Employee'), {
     target: { value: EMPLOYEES[empIndex].employee },
   })
+
+  // Select first category by default
+  const categoryToSelect = overrides.category ?? 'Innovation'
+  fireEvent.click(screen.getByText(categoryToSelect).closest('button[type="button"]')!)
+
   fireEvent.change(screen.getByLabelText('Value (ETH)'), { target: { value: val } })
 
   if (overrides.date !== undefined) {
@@ -161,6 +166,21 @@ describe('MinterMintForm', () => {
     expect(screen.getByText('Mint Kudos NFT')).toBeInTheDocument()
   })
 
+  // ── T4f: renders category picker with all categories ──
+
+  it('renders category picker with all recognition categories', () => {
+    renderForm()
+
+    const categories = [
+      'Innovation', 'Leadership', 'Teamwork', 'Excellence',
+      'Mentorship', 'Impact', 'Creativity', 'Reliability',
+    ]
+    categories.forEach((cat) => {
+      expect(screen.getByText(cat)).toBeInTheDocument()
+    })
+    expect(screen.getByText('Recognition Category')).toBeInTheDocument()
+  })
+
   // ── T5a: shows inline error when value is empty ──
 
   it('shows inline error when value is empty on submit', async () => {
@@ -168,6 +188,8 @@ describe('MinterMintForm', () => {
     fireEvent.change(screen.getByLabelText('Employee'), {
       target: { value: EMPLOYEES[0].employee },
     })
+    // Select a category
+    fireEvent.click(screen.getByText('Innovation').closest('button[type="button"]')!)
     // Leave value empty
     fireEvent.change(screen.getByLabelText('Value (ETH)'), { target: { value: '' } })
 
@@ -195,7 +217,8 @@ describe('MinterMintForm', () => {
     expect(callArgs.employee).toBe(EMPLOYEES[0].employee)
     expect(callArgs.value).toBe('100')
     expect(callArgs.employeeName).toBe('Alice Johnson')
-    expect(callArgs.name).toBe('Employee Recognition')
+    expect(callArgs.name).toBe('introducing groundbreaking ideas')
+    expect(callArgs.category).toBe('Innovation')
   })
 
   // ── T5c: sends functionName: 'mintKudos' ──
