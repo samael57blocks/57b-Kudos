@@ -113,7 +113,8 @@ export function useEmployeeNFTs(
 
             let companyId: bigint | null = null
             try {
-              const logs = await publicClient.getLogs({
+              // Try Recognized event first (company admin flow)
+              const recognizedLogs = await publicClient.getLogs({
                 address: contracts.companyRegistry,
                 event: parseAbiItem(
                   'event Recognized(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee)',
@@ -121,11 +122,30 @@ export function useEmployeeNFTs(
                 args: { tokenId },
                 fromBlock: 0n,
               })
-              if (logs.length > 0) {
-                companyId = logs[0].args.companyId ?? null
+              if (recognizedLogs.length > 0) {
+                companyId = recognizedLogs[0].args.companyId ?? null
               }
             } catch {
-              // Recognized event scan failed — leave null
+              // Recognized event scan failed — try KudosMinted
+            }
+
+            if (companyId === null) {
+              try {
+                // Fall back to KudosMinted event (minter flow)
+                const kudosLogs = await publicClient.getLogs({
+                  address: contracts.companyRegistry,
+                  event: parseAbiItem(
+                    'event KudosMinted(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee, address minter)',
+                  ),
+                  args: { tokenId },
+                  fromBlock: 0n,
+                })
+                if (kudosLogs.length > 0) {
+                  companyId = kudosLogs[0].args.companyId ?? null
+                }
+              } catch {
+                // KudosMinted event scan failed — leave null
+              }
             }
 
             return { tokenId, tokenURI: uri, companyId }
