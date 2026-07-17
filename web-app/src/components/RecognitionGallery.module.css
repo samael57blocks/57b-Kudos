@@ -27,6 +27,16 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+
+.badgeItem:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .categoryName {

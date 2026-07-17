@@ -1,5 +1,6 @@
 import { HexBadge } from './HexBadge/HexBadge'
 import type { CategoryGroup } from '../hooks/usePortfolioData'
+import type { BadgeCategory } from '../lib/recognition-data'
 import styles from './RecognitionGallery.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -7,6 +8,7 @@ import styles from './RecognitionGallery.module.css'
 interface RecognitionGalleryProps {
   categories: CategoryGroup[]
   isLoading: boolean
+  onSelect?: (category: BadgeCategory) => void
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -21,7 +23,7 @@ function SkeletonBadge() {
  * Displays recognition categories as a HexBadge grid.
  * Each badge shows the category icon and name with a count.
  */
-export function RecognitionGallery({ categories, isLoading }: RecognitionGalleryProps) {
+export function RecognitionGallery({ categories, isLoading, onSelect }: RecognitionGalleryProps) {
   if (isLoading) {
     return (
       <div className={styles.section}>
@@ -54,13 +56,18 @@ export function RecognitionGallery({ categories, isLoading }: RecognitionGallery
       <h2 className={styles.title}>Recognition Portfolio</h2>
       <div className={styles.grid}>
         {categories.map(({ category, count }) => (
-          <div key={category} className={styles.badgeItem}>
-            <HexBadge category={category} size="lg" />
+          <button
+            key={category}
+            type="button"
+            className={styles.badgeItem}
+            onClick={() => onSelect?.(category)}
+          >
+            <HexBadge category={category} size="lg" interactive />
             <span className={styles.categoryName}>{category}</span>
             {count > 1 && (
               <span className={styles.badgeCount}>×{count}</span>
             )}
-          </div>
+          </button>
         ))}
       </div>
     </div>

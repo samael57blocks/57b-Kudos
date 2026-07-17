@@ -9,6 +9,7 @@ import type { BadgeCategory } from '../lib/recognition-data'
 export interface NFTWithMetadata extends EmployeeNFTData {
   category: BadgeCategory | null
   employeeName: string | null
+  description: string | null
 }
 
 export interface CategoryGroup {
@@ -81,11 +82,13 @@ export function usePortfolioData(
     return nfts.map((nft, i) => {
       const meta = metadataResults[i]?.data as Record<string, unknown> | undefined
       const attributes = (meta?.attributes as Record<string, unknown>[]) ?? []
+      const description = (meta?.description as string) ?? null
 
       return {
         ...nft,
         category: extractCategory(attributes),
         employeeName: extractEmployeeName(attributes),
+        description,
       }
     })
   }, [nfts, metadataResults])

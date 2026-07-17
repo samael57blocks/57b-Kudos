@@ -3,9 +3,9 @@ import { useAccount } from 'wagmi'
 import { Layout } from '../components/Layout'
 import { ProfileHeader } from '../components/ProfileHeader'
 import { RecognitionGallery } from '../components/RecognitionGallery'
-import { NFTDetail } from '../components/NFTDetail'
+import { RecognitionDetail } from '../components/RecognitionDetail'
 import { usePortfolioData } from '../hooks/usePortfolioData'
-import type { NFTWithMetadata } from '../hooks/usePortfolioData'
+import type { BadgeCategory } from '../lib/recognition-data'
 import styles from './EmployeePortfolio.module.css'
 
 /**
@@ -14,18 +14,24 @@ import styles from './EmployeePortfolio.module.css'
  * Layout:
  * - Profile header with avatar, name, and recognition count
  * - Recognition Portfolio grid with category HexBadges
- * - NFTDetail modal for individual NFT inspection
+ * - RecognitionDetail modal when a badge is clicked
  */
 export function EmployeePortfolio() {
   const { address, isConnected } = useAccount()
   const {
+    nfts,
     categories,
     employeeName,
     totalRecognitions,
     isLoading,
     error,
   } = usePortfolioData(address)
-  const [selectedNft, setSelectedNft] = useState<NFTWithMetadata | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<BadgeCategory | null>(null)
+
+  // Find the first NFT matching the selected category for description
+  const selectedNft = selectedCategory
+    ? nfts.find((nft) => nft.category === selectedCategory)
+    : null
 
   if (!isConnected || !address) {
     return (
@@ -54,6 +60,7 @@ export function EmployeePortfolio() {
         <RecognitionGallery
           categories={categories}
           isLoading={isLoading}
+          onSelect={setSelectedCategory}
         />
 
         {/* Error state */}
@@ -64,11 +71,13 @@ export function EmployeePortfolio() {
           </div>
         )}
 
-        {/* NFT Detail Modal */}
-        <NFTDetail
-          nft={selectedNft}
-          isOpen={!!selectedNft}
-          onClose={() => setSelectedNft(null)}
+        {/* Recognition Detail Modal */}
+        <RecognitionDetail
+          category={selectedCategory}
+          employeeName={employeeName}
+          description={selectedNft?.description ?? null}
+          isOpen={!!selectedCategory}
+          onClose={() => setSelectedCategory(null)}
         />
       </div>
     </Layout>
