@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, type ChangeEvent, type FormEvent } from 'react'
+import { useState, useEffect, useRef,  type FormEvent } from 'react'
 import { useMintNFT } from '../hooks/useMintNFT'
 import { uploadImage } from '../utils/ipfs'
 import { buildExplorerTxUrl } from '../utils/format'
 import type { EmployeeData } from '../hooks/useCompanyEmployees'
+import { CategoryPicker } from './CategoryPicker'
+import { BADGE_CONFIG, type BadgeCategory } from '../lib/recognition-data'
 import styles from './MinterMintForm.module.css'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -26,6 +28,7 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
 
   // Form fields
   const [employee, setEmployee] = useState('')
+  const [category, setCategory] = useState<BadgeCategory | ''>('')
   const [value, setValue] = useState('')
   const [date, setDate] = useState(todayString())
   const [comments, setComments] = useState('')
@@ -43,6 +46,7 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
   useEffect(() => {
     if (step === 'success' && prevStepRef.current !== 'success') {
       setEmployee('')
+      setCategory('')
       setValue('')
       setDate(todayString())
       setComments('')
@@ -55,10 +59,10 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+  /*const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null
     setImageFile(file)
-  }
+  }*/
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -69,6 +73,15 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
       setValidationErrors((prev) => ({
         ...prev,
         employee: 'Please select an employee',
+      }))
+      return
+    }
+
+    // Validate category selection
+    if (!category) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        category: 'Please select a recognition category',
       }))
       return
     }
@@ -98,16 +111,18 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
     // Find employee name from the selected address
     const emp = employees.find((e) => e.employee === employee)
     const employeeName = emp?.name ?? 'Unknown'
+    const categoryConfig = BADGE_CONFIG[category]
 
     // Call mint
     try {
       await mint({
         employee: employee as `0x${string}`,
-        name: 'Employee Recognition',
-        description: comments || 'Recognition NFT',
+        name: categoryConfig.description.replace('Awarded for ', ''),
+        description: comments || categoryConfig.description,
         value,
         date: date || todayString(),
         employeeName,
+        category,
         imageCid,
       })
     } catch {
@@ -125,10 +140,6 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
-      <h3 className={styles.title}>
-        Mint Kudos NFT
-      </h3>
-
       {/* Employee Select */}
       <label className={styles.label}>
         Employee
@@ -153,6 +164,14 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
         )}
       </label>
 
+      {/* Category Picker */}
+      <CategoryPicker
+        value={category}
+        onChange={setCategory}
+        disabled={isFormDisabled}
+        error={validationErrors.category}
+      />
+
       {/* Value */}
       <label className={styles.label}>
         Value (ETH)
@@ -172,43 +191,19 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
         )}
       </label>
 
-      {/* Date */}
-      <label className={styles.label}>
-        Date
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          disabled={isFormDisabled}
-          className={styles.input}
-          aria-label="Date"
-        />
-      </label>
+      
 
       {/* Comments */}
       <label className={styles.label}>
-        Comments
+        Recognition Message
         <textarea
           value={comments}
           onChange={(e) => setComments(e.target.value)}
-          placeholder="Optional recognition message (max 500 chars)"
+          placeholder="Describe what this person did and why it deserves recognition..."
           maxLength={500}
           disabled={isFormDisabled}
           className={styles.textarea}
           aria-label="Comments"
-        />
-      </label>
-
-      {/* Image Upload */}
-      <label className={styles.label}>
-        Image (optional)
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageChange}
-          disabled={isFormDisabled}
-          className={styles.input}
-          aria-label="Image"
         />
       </label>
 
@@ -248,7 +243,7 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
           ? 'Uploading…'
           : step === 'confirming'
             ? 'Confirming…'
-            : 'Mint Kudos'}
+            : 'Send Recognition'}
       </button>
     </form>
   )
