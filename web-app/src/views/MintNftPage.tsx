@@ -38,9 +38,9 @@ export function MintNftPage() {
   return (
     <Layout>
       <div className={styles.container}>
-        <h1 className={styles.title}>Mint Kudos NFT</h1>
+        <h1 className={styles.title}>Give a Recognition</h1>
         <p className={styles.subtitle}>
-          Reward an employee with a recognition NFT.
+          Celebrate a colleague's contribution by awarding them a badge.
         </p>
 
         {resolveError && (
