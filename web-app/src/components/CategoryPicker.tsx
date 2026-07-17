@@ -1,5 +1,4 @@
 import { HexBadge } from './HexBadge/HexBadge'
-import { Badge } from './HexBadge/Badge'
 import { BADGE_CONFIG, type BadgeCategory } from '../lib/recognition-data'
 import styles from './CategoryPicker.module.css'
 
