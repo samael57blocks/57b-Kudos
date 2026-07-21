@@ -3,10 +3,11 @@
 .label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 15px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-h, #08060d);
+  text-align: left;
 }
 
 .input {
@@ -69,7 +70,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 40px;
   padding: 24px;
   background: var(--bg, #fff);
 }

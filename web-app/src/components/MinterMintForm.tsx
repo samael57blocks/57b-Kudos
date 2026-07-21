@@ -47,7 +47,7 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
     if (step === 'success' && prevStepRef.current !== 'success') {
       setEmployee('')
       setCategory('')
-      setValue('')
+      setValue('0.1')
       setDate(todayString())
       setComments('')
       setImageFile(null)
@@ -82,15 +82,6 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
       setValidationErrors((prev) => ({
         ...prev,
         category: 'Please select a recognition category',
-      }))
-      return
-    }
-
-    // Validate value
-    if (!value || isNaN(Number(value))) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        value: 'Value is required and must be a number',
       }))
       return
     }
@@ -140,9 +131,18 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
+      {/* Category Picker */}
+      <CategoryPicker
+        value={category}
+        onChange={setCategory}
+        disabled={isFormDisabled}
+        error={validationErrors.category}
+      />
+
+      
       {/* Employee Select */}
       <label className={styles.label}>
-        Employee
+        Select a Recipient
         <select
           value={employee}
           onChange={(e) => setEmployee(e.target.value)}
@@ -163,35 +163,6 @@ export function MinterMintForm({ companyId, employees }: MinterMintFormProps) {
           </span>
         )}
       </label>
-
-      {/* Category Picker */}
-      <CategoryPicker
-        value={category}
-        onChange={setCategory}
-        disabled={isFormDisabled}
-        error={validationErrors.category}
-      />
-
-      {/* Value */}
-      <label className={styles.label}>
-        Value (ETH)
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="0.1"
-          disabled={isFormDisabled}
-          className={styles.input}
-          aria-label="Value (ETH)"
-        />
-        {validationErrors.value && (
-          <span className={styles.error} role="alert">
-            {validationErrors.value}
-          </span>
-        )}
-      </label>
-
-      
 
       {/* Comments */}
       <label className={styles.label}>

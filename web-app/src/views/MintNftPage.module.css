@@ -4,16 +4,20 @@
 }
 
 .title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 600;
   color: var(--text-h, #08060d);
-  margin-bottom: 4px;
+  margin-bottom: 15px;
+  text-align: left;
+  font: sans-serif;
 }
 
 .subtitle {
   color: var(--text, #6b6375);
-  font-size: 14px;
+  font-size: 15px;
   margin-bottom: 24px;
+  text-align: left;
+  font: sans-serif;
 }
 
 .form {

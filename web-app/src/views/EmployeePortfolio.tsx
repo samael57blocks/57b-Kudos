@@ -1,24 +1,37 @@
 import { useState } from 'react'
 import { useAccount } from 'wagmi'
 import { Layout } from '../components/Layout'
-import { NFTGallery } from '../components/NFTGallery'
-import { NFTDetail } from '../components/NFTDetail'
-import { useEmployeeNFTs } from '../hooks/useEmployeeNFTs'
-import type { EmployeeNFTData } from '../hooks/useEmployeeNFTs'
+import { ProfileHeader } from '../components/ProfileHeader'
+import { RecognitionGallery } from '../components/RecognitionGallery'
+import { RecognitionDetail } from '../components/RecognitionDetail'
+import { usePortfolioData } from '../hooks/usePortfolioData'
+import type { BadgeCategory } from '../lib/recognition-data'
 import styles from './EmployeePortfolio.module.css'
 
 /**
- * Employee-facing view that displays all recognition NFTs owned by the
- * connected wallet.
+ * Employee-facing portfolio view showing recognition NFTs as HexBadge categories.
  *
- * Uses useAccount for wallet state and useEmployeeNFTs for NFT data.
- * Renders NFTGallery with filtered NFTs and NFTDetail for the selected NFT.
- * Shows a connect message if the wallet is not connected.
+ * Layout:
+ * - Profile header with avatar, name, and recognition count
+ * - Recognition Portfolio grid with category HexBadges
+ * - RecognitionDetail modal when a badge is clicked
  */
 export function EmployeePortfolio() {
   const { address, isConnected } = useAccount()
-  const { nfts, isLoading, error } = useEmployeeNFTs(address)
-  const [selectedNft, setSelectedNft] = useState<EmployeeNFTData | null>(null)
+  const {
+    nfts,
+    categories,
+    employeeName,
+    totalRecognitions,
+    isLoading,
+    error,
+  } = usePortfolioData(address)
+  const [selectedCategory, setSelectedCategory] = useState<BadgeCategory | null>(null)
+
+  // Find the first NFT matching the selected category for description
+  const selectedNft = selectedCategory
+    ? nfts.find((nft) => nft.category === selectedCategory)
+    : null
 
   if (!isConnected || !address) {
     return (
@@ -36,22 +49,35 @@ export function EmployeePortfolio() {
   return (
     <Layout>
       <div className={styles.wrapper}>
-        <h1 className={styles.titleLine}>My Portfolio</h1>
-        <p className={styles.subtitle}>
-          Recognition NFTs you have received
-        </p>
-
-        <NFTGallery
-          nfts={nfts}
-          isLoading={isLoading}
-          error={error}
-          onSelect={setSelectedNft}
+        {/* Profile Header */}
+        <ProfileHeader
+          employeeName={employeeName}
+          address={address}
+          totalRecognitions={totalRecognitions}
         />
 
-        <NFTDetail
-          nft={selectedNft}
-          isOpen={!!selectedNft}
-          onClose={() => setSelectedNft(null)}
+        {/* Recognition Portfolio */}
+        <RecognitionGallery
+          categories={categories}
+          isLoading={isLoading}
+          onSelect={setSelectedCategory}
+        />
+
+        {/* Error state */}
+        {error && (
+          <div className={styles.error} role="alert">
+            <p className={styles.errorTitle}>Failed to load recognitions</p>
+            <p className={styles.errorMessage}>{error.message}</p>
+          </div>
+        )}
+
+        {/* Recognition Detail Modal */}
+        <RecognitionDetail
+          category={selectedCategory}
+          employeeName={employeeName}
+          description={selectedNft?.description ?? null}
+          isOpen={!!selectedCategory}
+          onClose={() => setSelectedCategory(null)}
         />
       </div>
     </Layout>

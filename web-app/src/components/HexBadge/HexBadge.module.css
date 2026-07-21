@@ -1,0 +1,25 @@
+.container{
+    position: relative;
+    width: 120px;
+    height: 120px;
+    /*background: transparent;
+    border: none;*/
+    padding: 0;
+    cursor: pointer;
+    background-color: aqua;
+}
+
+.outerhex {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+}
+
+.innerhex {
+    position: absolute;
+    inset: 8px;
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

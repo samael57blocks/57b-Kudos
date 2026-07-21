@@ -1,0 +1,73 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border, #e5e4e7);
+  margin-bottom: 32px;
+}
+
+/* ── Avatar ────────────────────────────────────────────────────────────── */
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #3b3b3b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.initials {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+/* ── Info ──────────────────────────────────────────────────────────────── */
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.name {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-h, #08060d);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.count {
+  font-size: 14px;
+  color: var(--text, #6b6375);
+  margin: 0;
+}
+
+.countNumber {
+  font-weight: 600;
+  color: var(--accent, #aa3bff);
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .avatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .initials {
+    font-size: 18px;
+  }
+
+  .name {
+    font-size: 18px;
+  }
+}

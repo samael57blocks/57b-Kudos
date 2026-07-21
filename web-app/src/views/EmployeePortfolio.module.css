@@ -3,6 +3,8 @@
   margin: 0 auto;
 }
 
+/* ── Connect message ───────────────────────────────────────────────────── */
+
 .connectMessage {
   text-align: center;
   padding: 80px 20px;
@@ -20,13 +22,23 @@
   font-size: 14px;
 }
 
-.titleLine {
-  font-size: 24px;
+/* ── Error state ───────────────────────────────────────────────────────── */
+
+.error {
+  text-align: center;
+  padding: 40px 20px;
+  color: #ef4444;
+  background: #fef2f2;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+  margin-top: 24px;
+}
+
+.errorTitle {
+  font-weight: 600;
   margin-bottom: 4px;
 }
 
-.subtitle {
-  color: var(--text, #6b6375);
-  font-size: 14px;
-  margin-bottom: 24px;
+.errorMessage {
+  font-size: 13px;
 }

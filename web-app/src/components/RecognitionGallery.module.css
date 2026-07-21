@@ -1,0 +1,98 @@
+.section {
+  padding: 24px;
+  background: #e7ebf0;
+  border-radius: 12px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+  margin: 0 0 24px 0;
+  text-align: left;
+}
+
+/* ── Grid ──────────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 24px;
+  justify-items: center;
+}
+
+/* ── Badge item ────────────────────────────────────────────────────────── */
+
+.badgeItem {
+  gap: 8px;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  background: transparent;
+  /* Smoothly animate the transform over 0.3 seconds */
+  transition: transform 0.3s ease-in-out;
+}
+
+.badgeItem:hover {
+  transform: scale(1.05);
+}
+
+.categoryName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+  text-align: center;
+}
+
+.badgeCount {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, #aa3bff);
+  background: var(--accent-bg, rgba(170, 59, 255, 0.1));
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* ── Empty state ───────────────────────────────────────────────────────── */
+
+.empty {
+  text-align: center;
+  padding: 48px 20px;
+}
+
+.emptyText {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-h, #08060d);
+  margin: 0 0 4px 0;
+}
+
+.emptySubtext {
+  font-size: 13px;
+  color: var(--text, #6b6375);
+  margin: 0;
+}
+
+/* ── Skeleton ──────────────────────────────────────────────────────────── */
+
+.skeletonBadge {
+  width: 112px;
+  height: 140px;
+  border-radius: 12px;
+  background: var(--border, #e5e4e7);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 16px;
+  }
+}
