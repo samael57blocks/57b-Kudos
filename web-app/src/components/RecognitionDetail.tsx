@@ -1,7 +1,7 @@
 import { Dialog } from './Dialog'
-import { HexBadge } from './HexBadge/HexBadge'
 import { BADGE_CONFIG, type BadgeCategory } from '../lib/recognition-data'
 import styles from './RecognitionDetail.module.css'
+import { Badge } from './HexBadge/Badge'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ export function RecognitionDetail({
 
           <div className={styles.headerContent}>
             <div className={styles.badgeWrapper}>
-              <HexBadge category={category} size="xl" />
+              <Badge category={category} size='lg'></Badge>
             </div>
             <h2 className={styles.categoryName}>{category}</h2>
             <p className={styles.categoryTitle}>{config.description}</p>

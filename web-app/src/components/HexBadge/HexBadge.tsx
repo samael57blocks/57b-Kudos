@@ -1,4 +1,5 @@
 import { BADGE_CONFIG, type BadgeCategory } from '../../lib/recognition-data'
+import styles from './HexBadge.module.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -59,9 +60,8 @@ export function HexBadge({
 
   const outerHex = (
     <div
-      className="absolute inset-0 transition-all duration-200"
+      className={styles.outerHex}
       style={{
-        clipPath: HEX_CLIP_PATH,
         background: config.color,
         opacity: selected ? 0.25 : 0.15,
       }}
@@ -70,17 +70,11 @@ export function HexBadge({
 
   const innerHex = (
     <div
-      className="absolute transition-all duration-200"
+      className={styles.innerHex}
       style={{
-        clipPath: HEX_CLIP_PATH,
-        background: selected ? config.color : config.lightColor,
-        width: inner,
-        height: inner,
-        top: '50%',
-        left: '50%',
-        display: 'grid',
-        placeItems: 'center',
-        zIndex: 1,
+        //background: selected ? config.color : config.lightColor,
+        backgroundColor: "#3B82F6",
+        clipPath: HEX_CLIP_PATH
       }}
     >
       <span
@@ -101,7 +95,7 @@ export function HexBadge({
   if (!isClickable) {
     return (
       <div
-        className={baseClasses}
+        className={styles.container}
         style={badgeStyle}
         aria-label={`${category} recognition badge`}
       >
@@ -115,8 +109,8 @@ export function HexBadge({
     <button
       type="button"
       onClick={onClick}
-      className={baseClasses}
-      style={badgeStyle}
+      className={styles.container}
+      //style={badgeStyle}
       aria-label={`${category} recognition badge`}
       aria-pressed={selected || undefined}
     >

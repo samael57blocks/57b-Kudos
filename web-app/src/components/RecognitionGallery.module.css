@@ -1,6 +1,6 @@
 .section {
   padding: 24px;
-  background: #f2f7fc;
+  background: #e7ebf0;
   border-radius: 12px;
 }
 
@@ -9,6 +9,7 @@
   font-weight: 600;
   color: var(--text-h, #08060d);
   margin: 0 0 24px 0;
+  text-align: left;
 }
 
 /* ── Grid ──────────────────────────────────────────────────────────────── */
@@ -23,20 +24,17 @@
 /* ── Badge item ────────────────────────────────────────────────────────── */
 
 .badgeItem {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   gap: 8px;
-  background: none;
   border: none;
   padding: 8px;
   cursor: pointer;
-  border-radius: 12px;
-  transition: background 0.15s;
+  background: transparent;
+  /* Smoothly animate the transform over 0.3 seconds */
+  transition: transform 0.3s ease-in-out;
 }
 
 .badgeItem:hover {
-  background: rgba(0, 0, 0, 0.04);
+  transform: scale(1.05);
 }
 
 .categoryName {

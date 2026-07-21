@@ -1,9 +1,12 @@
 .dialog {
-  width: 100%;
-  max-width: 420px;
+  width: 500px;
+  height: 70vh;
   border-radius: 15px;
   overflow: hidden;
   background: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 /* ── Header ────────────────────────────────────────────────────────────── */
@@ -51,18 +54,22 @@
 }
 
 .categoryName {
-  font-size: 22px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  margin-top: 10px;
+  text-align: center;
+  letter-spacing: 0.15em;
+}
+
+.categoryTitle {
+  font-size: 16px;
   font-weight: 700;
   color: #fff;
   margin: 0;
   text-align: center;
-}
-
-.categoryTitle {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.85);
-  margin: 0;
-  text-align: center;
+  font-style: italic;
 }
 
 /* ── Body ──────────────────────────────────────────────────────────────── */
@@ -121,10 +128,12 @@
 .footer {
   padding: 16px 24px 24px;
   background: #fff;
+  display: flex;
+  justify-content: center;
 }
 
 .claimButton {
-  width: 100%;
+  width: 50%;
   padding: 12px 24px;
   border: none;
   border-radius: 10px;

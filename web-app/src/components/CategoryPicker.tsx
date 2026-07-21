@@ -1,6 +1,6 @@
-import { HexBadge } from './HexBadge/HexBadge'
 import { BADGE_CONFIG, type BadgeCategory } from '../lib/recognition-data'
 import styles from './CategoryPicker.module.css'
+import { Badge } from './HexBadge/Badge'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -23,24 +23,31 @@ export function CategoryPicker({
   disabled = false,
   error,
 }: CategoryPickerProps) {
+
+  
   return (
     <fieldset className={styles.fieldset} disabled={disabled}>
-      <legend className={styles.legend}>Recognition Category</legend>
+      <legend className={styles.legend}>Select a Recognition Category </legend>
       <div className={styles.grid}>
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
             type="button"
             onClick={() => onChange(cat)}
-            className={[
-              styles.option,
-              value === cat ? styles.optionSelected : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
+            className={styles.option}
+            style={{ 
+              borderColor: value === cat ? BADGE_CONFIG[cat].color : '#fff',
+              background: value === cat ? BADGE_CONFIG[cat].lightColor : '#f5f3f7'
+            }}
           >
-            <HexBadge category={cat} size="sm" selected={value === cat} />
-            <span className={styles.label}>{cat}</span>
+            <Badge category={cat} size='sm'></Badge>
+            <span
+              style={{
+                color: value === cat ? BADGE_CONFIG[cat].color : '#6b6375'
+              }} 
+              className={styles.label}>
+              {cat}
+            </span>
           </button>
         ))}
       </div>

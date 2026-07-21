@@ -1,7 +1,7 @@
-import { HexBadge } from './HexBadge/HexBadge'
 import type { CategoryGroup } from '../hooks/usePortfolioData'
 import type { BadgeCategory } from '../lib/recognition-data'
 import styles from './RecognitionGallery.module.css'
+import { Badge } from './HexBadge/Badge'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -62,7 +62,7 @@ export function RecognitionGallery({ categories, isLoading, onSelect }: Recognit
             className={styles.badgeItem}
             onClick={() => onSelect?.(category)}
           >
-            <HexBadge category={category} size="lg" interactive />
+            <Badge category={category}/>
             <span className={styles.categoryName}>{category}</span>
             {count > 1 && (
               <span className={styles.badgeCount}>×{count}</span>

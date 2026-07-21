@@ -30,7 +30,7 @@ export const BADGE_CONFIG: Record<
     color: "#3B82F6",
     lightColor: "#EFF6FF",
     icon: "✦",
-    description: "Awarded for introducing groundbreaking ideas",
+    description: "Innovation Pioneer",
   },
   Leadership: {
     color: "#8B5CF6",
