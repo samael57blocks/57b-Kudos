@@ -57,6 +57,16 @@ vi.mock('../views/MintNftPage', () => ({
 vi.mock('../views/RegistrationPage', () => ({
   RegistrationPage: () => <div data-testid="registration-page">Registration Page</div>,
 }))
+vi.mock('../views/CompanyDashboardSection', () => ({
+  CompanyDashboardSection: ({ companyId }: { companyId: bigint }) => (
+    <div data-testid="company-dashboard-section">Company Dashboard: {companyId?.toString()}</div>
+  ),
+}))
+vi.mock('../views/MinterDashboardSection', () => ({
+  MinterDashboardSection: ({ companyId }: { companyId: bigint | null }) => (
+    <div data-testid="minter-dashboard-section">Minter Dashboard: {companyId?.toString()}</div>
+  ),
+}))
 
 function connectedWallet(address: `0x${string}`, role: UserRole) {
   mockUseWalletConnection.mockReturnValue({
@@ -257,8 +267,8 @@ describe('App routing', () => {
     connectedWallet('0xCA' as `0x${string}`, 'company_admin')
     renderApp(['/mint'])
     await waitFor(() => {
-      // company_admin has no specific HomePage branch → visitor view
-      expect(screen.getByText('Welcome')).toBeInTheDocument()
+      // company_admin redirected to / → sees CompanyDashboardSection
+      expect(screen.getByTestId('company-dashboard-section')).toBeInTheDocument()
     })
   })
 
