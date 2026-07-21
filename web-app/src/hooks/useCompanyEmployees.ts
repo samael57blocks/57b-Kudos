@@ -84,7 +84,7 @@ export function useCompanyEmployees(
         if (cancelled) return
 
         // Resolve block timestamps for registration dates
-        const timestampPromises = empData.map((emp, i) =>
+        const timestampPromises = empData.map((_emp, i) =>
           publicClient
             .getBlock({ blockNumber: logs[i].blockNumber! })
             .then((block) => {

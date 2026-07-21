@@ -25,7 +25,7 @@ function todayString(): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MintNFTForm({ companyId }: MintNFTFormProps) {
-  const { mint, step, isConfirming, txHash, error: mintError, reset } =
+  const { mint, step, isConfirming: _isConfirming, txHash, error: mintError, reset } =
     useMintNFT(companyId)
   const publicClient = usePublicClient()
   const contracts = getContractAddresses()

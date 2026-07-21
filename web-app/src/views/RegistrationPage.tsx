@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useAccount, useReadContract } from 'wagmi'
 import { useUserRole } from '../hooks/useUserRole'
 import { useCompanyId } from '../hooks/useCompanyId'
-import { Layout } from '../components/Layout'
 import { CompanyCard } from '../components/CompanyCard'
 import { EmployeeList } from '../components/EmployeeList'
 import { RegisterCompanyDialog } from '../components/RegisterCompanyDialog'
@@ -13,7 +12,7 @@ import styles from './RegistrationPage.module.css'
 
 export function RegistrationPage() {
   const { address } = useAccount()
-  const { role, refetchRole } = useUserRole()
+  const { role } = useUserRole()
   const { companyId: hookCompanyId, isLoading: isCompanyIdLoading, error: companyIdError } =
     useCompanyId(address)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -47,11 +46,9 @@ export function RegistrationPage() {
 
   if (!address) {
     return (
-      <Layout>
-        <div className={styles.empty}>
-          <p>Connect your wallet to register</p>
-        </div>
-      </Layout>
+      <div className={styles.empty}>
+        <p>Connect your wallet to register</p>
+      </div>
     )
   }
 
@@ -59,11 +56,9 @@ export function RegistrationPage() {
 
   if (role === 'employee') {
     return (
-      <Layout>
-        <div className={styles.empty}>
-          <p>You are already registered to a company</p>
-        </div>
-      </Layout>
+      <div className={styles.empty}>
+        <p>You are already registered to a company</p>
+      </div>
     )
   }
 
@@ -73,35 +68,31 @@ export function RegistrationPage() {
     // Loading state while resolving company ID
     if (isCompanyIdLoading) {
       return (
-        <Layout>
-          <div className={styles.container}>
-            <h1 className={styles.title}>Company</h1>
-            <div className={styles.loading}>
-              <p>Loading company information…</p>
-            </div>
+        <div className={styles.container}>
+          <h1 className={styles.title}>Company</h1>
+          <div className={styles.loading}>
+            <p>Loading company information…</p>
           </div>
-        </Layout>
+        </div>
       )
     }
 
     // Error state
     if (companyIdError) {
       return (
-        <Layout>
-          <div className={styles.container}>
-            <h1 className={styles.title}>Company</h1>
-            <div className={styles.empty}>
-              <p role="alert">Error loading company: {companyIdError.message}</p>
-            </div>
+        <div className={styles.container}>
+          <h1 className={styles.title}>Company</h1>
+          <div className={styles.empty}>
+            <p role="alert">Error loading company: {companyIdError.message}</p>
           </div>
-        </Layout>
+        </div>
       )
     }
 
     // Empty state: admin has no company registered yet
     if (companyId === null) {
       return (
-        <Layout>
+        <>
           <div className={styles.container}>
             <h1 className={styles.title}>Company</h1>
             <div className={styles.empty}>
@@ -121,13 +112,13 @@ export function RegistrationPage() {
             onClose={() => setIsDialogOpen(false)}
             onSuccess={handleDialogSuccess}
           />
-        </Layout>
+        </>
       )
     }
 
     // Populated state: company card + employee list
     return (
-      <Layout>
+      <>
         <div className={styles.container}>
           <h1 className={styles.title}>Company</h1>
 
@@ -147,21 +138,19 @@ export function RegistrationPage() {
           onClose={() => setIsDialogOpen(false)}
           onSuccess={handleDialogSuccess}
         />
-      </Layout>
+      </>
     )
   }
 
   // ── Visitor (connected, no role) ──────────────────────────────────────────
 
   return (
-    <Layout>
-      <div className={styles.container}>
-        <h1 className={styles.title}>Company</h1>
-        <p className={styles.subtitle}>
-          Your admin needs to add you as an employee before you can start
-          receiving Kudos. Contact your company admin to get registered.
-        </p>
-      </div>
-    </Layout>
+    <div className={styles.container}>
+      <h1 className={styles.title}>Company</h1>
+      <p className={styles.subtitle}>
+        Your admin needs to add you as an employee before you can start
+        receiving Kudos. Contact your company admin to get registered.
+      </p>
+    </div>
   )
 }

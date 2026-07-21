@@ -32,25 +32,10 @@ export function HexBadge({
   selected = false,
   interactive = false,
   onClick,
-  className,
 }: HexBadgeProps) {
   const config = BADGE_CONFIG[category]
-  const { outer, inner, fontSize } = SIZE_MAP[size]
+  const { outer, inner: _inner, fontSize } = SIZE_MAP[size]
   const isClickable = interactive || !!onClick
-
-  const baseClasses = [
-    'hex-badge',
-    'relative',
-    'border-none p-0 bg-transparent',
-    'transition-all duration-200',
-    isClickable
-      ? 'cursor-pointer hover:scale-110 active:scale-95'
-      : 'cursor-default',
-    selected ? 'ring-2 ring-offset-2' : '',
-    className ?? '',
-  ]
-    .filter(Boolean)
-    .join(' ')
 
   const badgeStyle = {
     width: outer,
