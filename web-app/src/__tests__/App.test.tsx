@@ -13,11 +13,13 @@ const mockUseReadContract = vi.hoisted(() => vi.fn())
 const mockUseWriteContract = vi.hoisted(() => vi.fn())
 const mockUseWaitForTx = vi.hoisted(() => vi.fn())
 const mockUsePublicClient = vi.hoisted(() => vi.fn())
+const mockUseAccount = vi.hoisted(() => vi.fn())
 
 vi.mock('wagmi', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...(typeof actual === 'object' && actual !== null ? actual : {}),
+    useAccount: mockUseAccount,
     useReadContract: mockUseReadContract,
     useWriteContract: mockUseWriteContract,
     useWaitForTransactionReceipt: mockUseWaitForTx,
@@ -49,9 +51,45 @@ vi.mock('../hooks/useCompanyNFTs', () => ({
 vi.mock('../views/EmployeePortfolio', () => ({
   EmployeePortfolio: () => <div data-testid="employee-portfolio">Employee Portfolio</div>,
 }))
+vi.mock('../views/MintNftPage', () => ({
+  MintNftPage: () => <div data-testid="mint-page">Give a Recognition</div>,
+}))
 vi.mock('../views/RegistrationPage', () => ({
   RegistrationPage: () => <div data-testid="registration-page">Registration Page</div>,
 }))
+
+function connectedWallet(address: `0x${string}`, role: UserRole) {
+  mockUseWalletConnection.mockReturnValue({
+    address,
+    isConnected: true,
+    isConnecting: false,
+    isCorrectNetwork: true,
+    chainName: 'Hardhat Local',
+    targetNetwork: 'localhost',
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    switchToTargetNetwork: vi.fn(),
+    isSwitchingNetwork: false,
+  })
+  mockUseAccount.mockReturnValue({
+    address,
+    isConnected: true,
+  })
+  mockUseUserRole.mockReturnValue({
+    role,
+    employeeCompanyId: role === 'employee' ? 1 : undefined,
+    isLoading: false,
+    error: null,
+  })
+  // Minter and company_admin need a companyId for their views
+  if (role === 'minter' || role === 'company_admin' || role === 'admin') {
+    mockUseCompanyId.mockReturnValue({
+      companyId: 1,
+      isLoading: false,
+      error: null,
+    })
+  }
+}
 
 function renderApp(initialEntries = ['/']) {
   return render(
@@ -63,6 +101,7 @@ function renderApp(initialEntries = ['/']) {
 
 describe('App routing', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     mockUseWalletConnection.mockReturnValue({
       address: undefined,
       isConnected: false,
@@ -113,7 +152,13 @@ describe('App routing', () => {
       error: undefined,
     })
     mockUsePublicClient.mockReturnValue(undefined)
+    mockUseAccount.mockReturnValue({
+      address: undefined,
+      isConnected: false,
+    })
   })
+
+  // ── Basic routing ───────────────────────────────────────────────────────
 
   it('renders welcome message at / when not connected', () => {
     renderApp(['/'])
@@ -168,83 +213,27 @@ describe('App routing', () => {
     })
   })
 
+  // ── Route protection ────────────────────────────────────────────────────
+
   it('allows employee to access /portfolio route', async () => {
-    mockUseWalletConnection.mockReturnValue({
-      address: '0xE' as `0x${string}`,
-      isConnected: true,
-      isConnecting: false,
-      isCorrectNetwork: true,
-      chainName: 'Hardhat Local',
-      targetNetwork: 'localhost',
-      connect: vi.fn(),
-      disconnect: vi.fn(),
-      switchToTargetNetwork: vi.fn(),
-      isSwitchingNetwork: false,
-    })
-    mockUseUserRole.mockReturnValue({
-      role: 'employee' as UserRole,
-      employeeCompanyId: 1,
-      isLoading: false,
-      error: null,
-    })
-
+    connectedWallet('0xE' as `0x${string}`, 'employee')
     renderApp(['/portfolio'])
-
     await waitFor(() => {
       expect(screen.getByTestId('employee-portfolio')).toBeInTheDocument()
     })
   })
 
   it('allows company_admin to access /company route', async () => {
-    mockUseWalletConnection.mockReturnValue({
-      address: '0xCA' as `0x${string}`,
-      isConnected: true,
-      isConnecting: false,
-      isCorrectNetwork: true,
-      chainName: 'Hardhat Local',
-      targetNetwork: 'localhost',
-      connect: vi.fn(),
-      disconnect: vi.fn(),
-      switchToTargetNetwork: vi.fn(),
-      isSwitchingNetwork: false,
-    })
-    mockUseUserRole.mockReturnValue({
-      role: 'company_admin' as UserRole,
-      employeeCompanyId: undefined,
-      isLoading: false,
-      error: null,
-    })
-
+    connectedWallet('0xCA' as `0x${string}`, 'company_admin')
     renderApp(['/company'])
-
     await waitFor(() => {
       expect(screen.getByTestId('registration-page')).toBeInTheDocument()
     })
   })
 
   it('redirects visitor away from /portfolio route', async () => {
-    mockUseWalletConnection.mockReturnValue({
-      address: '0xE' as `0x${string}`,
-      isConnected: true,
-      isConnecting: false,
-      isCorrectNetwork: true,
-      chainName: 'Hardhat Local',
-      targetNetwork: 'localhost',
-      connect: vi.fn(),
-      disconnect: vi.fn(),
-      switchToTargetNetwork: vi.fn(),
-      isSwitchingNetwork: false,
-    })
-    mockUseUserRole.mockReturnValue({
-      role: 'visitor' as UserRole,
-      employeeCompanyId: undefined,
-      isLoading: false,
-      error: null,
-    })
-
+    connectedWallet('0xE' as `0x${string}`, 'visitor')
     renderApp(['/portfolio'])
-
-    // Visitor should be redirected to / and see the visitor homepage
     await waitFor(() => {
       expect(screen.getByText('Welcome')).toBeInTheDocument()
       expect(
@@ -252,5 +241,33 @@ describe('App routing', () => {
       ).toBeInTheDocument()
     })
     expect(screen.queryByTestId('employee-portfolio')).not.toBeInTheDocument()
+  })
+
+  // ── /mint minter-only (security) ────────────────────────────────────────
+
+  it('allows minter to access /mint route', async () => {
+    connectedWallet('0xM' as `0x${string}`, 'minter')
+    renderApp(['/mint'])
+    await waitFor(() => {
+      expect(screen.getByTestId('mint-page')).toBeInTheDocument()
+    })
+  })
+
+  it('redirects company_admin away from /mint route', async () => {
+    connectedWallet('0xCA' as `0x${string}`, 'company_admin')
+    renderApp(['/mint'])
+    await waitFor(() => {
+      // company_admin has no specific HomePage branch → visitor view
+      expect(screen.getByText('Welcome')).toBeInTheDocument()
+    })
+  })
+
+  it('redirects admin away from /mint route', async () => {
+    connectedWallet('0xAD' as `0x${string}`, 'admin')
+    renderApp(['/mint'])
+    await waitFor(() => {
+      // admin lands on HomePage → admin view
+      expect(screen.getByText('Company Overview')).toBeInTheDocument()
+    })
   })
 })

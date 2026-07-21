@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { ConnectButton } from './ConnectButton'
 import { NetworkBadge } from './NetworkBadge'
+import { TabNav } from './TabNav'
 import { useUserRole } from '../hooks/useUserRole'
 import styles from './Layout.module.css'
 
@@ -10,109 +11,27 @@ interface LayoutProps {
 }
 
 /**
- * Main application layout with header, sidebar navigation, and content area.
+ * Main application layout with header containing logo, TabNav, and wallet controls.
  *
- * Navigation items are conditionally shown based on the connected wallet's role:
- * - Admin sees: Company
- * - Company admin sees: Dashboard
- * - Employee sees: Portfolio
- * - Visitor sees: nothing extra
+ * Navigation is role-based via TabNav (horizontal pill tabs in header).
+ * The sidebar has been removed — all views render directly in the content area.
  */
 export function Layout({ children }: LayoutProps) {
   const { role } = useUserRole()
+  const { pathname } = useLocation()
 
   return (
     <>
       <header className={styles.header}>
         <span className={styles.logo}>🏆 NFT57B</span>
+        <TabNav role={role} currentPath={pathname} />
         <div className={styles.headerRight}>
           <NetworkBadge />
           <ConnectButton />
         </div>
       </header>
 
-      <div className={styles.mainArea}>
-        <nav className={styles.sidebar}>
-          {role === 'admin' ? (
-            <>
-              <NavLink
-                to="/"
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-                }
-              >
-                Overview
-              </NavLink>
-              <NavLink
-                to="/company"
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-                }
-              >
-                 Company
-              </NavLink>
-            </>
-          ) : role === 'minter' ? (
-            <>
-              <NavLink
-                to="/mint"
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-                }
-              >
-                Mint
-              </NavLink>
-              <NavLink
-                to="/dashboard"
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-                }
-              >
-                Dashboard
-              </NavLink>
-              <NavLink
-                to="/portfolio"
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-                }
-              >
-                My Portfolio
-              </NavLink>
-            </>
-          ) : role === 'employee' ? (
-            <NavLink
-              to="/portfolio"
-              className={({ isActive }) =>
-                `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-              }
-            >
-              My Portfolio
-            </NavLink>
-          ) : (
-            <>
-              <NavLink
-                to="/dashboard"
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-                }
-              >
-                Dashboard
-              </NavLink>
-
-              <NavLink
-                to="/portfolio"
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-                }
-              >
-                My Portfolio
-              </NavLink>
-            </>
-          )}
-        </nav>
-
-        <main className={styles.content}>{children}</main>
-      </div>
+      <main className={styles.content}>{children}</main>
     </>
   )
 }
