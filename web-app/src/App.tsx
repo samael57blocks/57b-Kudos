@@ -1,4 +1,5 @@
 import { useRoutes, Navigate } from 'react-router-dom'
+import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { EmployeePortfolio } from './views/EmployeePortfolio'
 import { MintNftPage } from './views/MintNftPage'
@@ -6,7 +7,7 @@ import { RegistrationPage } from './views/RegistrationPage'
 import HomePage from './views/HomePage'
 
 function App() {
-  return useRoutes([
+  const routes = useRoutes([
     { path: '/', element: <HomePage /> },
     {
       path: '/portfolio',
@@ -34,6 +35,8 @@ function App() {
     },
     { path: '*', element: <Navigate to="/" replace /> },
   ])
+
+  return <Layout>{routes}</Layout>
 }
 
 export default App
