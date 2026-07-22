@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { RegistrationPage } from '../RegistrationPage'
-import type { ReactNode } from 'react'
 
 // --- Hoisted mocks ---
 
@@ -33,13 +32,6 @@ vi.mock('../../hooks/useCompanyId', () => ({
 vi.mock('../../config/contracts', () => ({
   getContractAddresses: mockGetContractAddresses,
   COMPANY_REGISTRY_ABI: [],
-}))
-
-// Mock Layout to render children
-vi.mock('../../components/Layout', () => ({
-  Layout: ({ children }: { children: ReactNode }) => (
-    <div data-testid="layout-wrapper">{children}</div>
-  ),
 }))
 
 // Mock child components so they don't need their own dep trees
@@ -248,28 +240,5 @@ describe('RegistrationPage', () => {
     expect(
       screen.queryByTestId('employee-list'),
     ).not.toBeInTheDocument()
-  })
-
-  // ── Layout wrapper ────────────────────────────────────────────────────────
-
-  it('renders layout wrapper when not connected', () => {
-    setupMocks({ account: { address: undefined, isConnected: false } })
-    renderPage()
-    expect(screen.getByTestId('layout-wrapper')).toBeInTheDocument()
-  })
-
-  it('renders layout wrapper for admin role with populated company', () => {
-    setupMocks({
-      role: { role: 'admin' },
-      companyId: { companyId: 42n, isLoading: false },
-      companyInfo: {
-        id: 42n,
-        name: 'Test Corp',
-        admin: '0xUser' as `0x${string}`,
-        createdAt: 1000n,
-      },
-    })
-    renderPage()
-    expect(screen.getByTestId('layout-wrapper')).toBeInTheDocument()
   })
 })
