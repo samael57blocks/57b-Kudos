@@ -98,7 +98,10 @@ export function useClaimNFT(tokenId: bigint): UseClaimNFTResult {
   // ── Claim function ────────────────────────────────────────────────────────
 
   const claim = useCallback(async (): Promise<void> => {
+    console.log('[useClaimNFT] claim() called, tokenId:', tokenId)
+    
     if (isClaimingRef.current) {
+      console.warn('[useClaimNFT] Already claiming, throwing')
       throw new Error('Claim already in progress')
     }
     isClaimingRef.current = true
@@ -108,10 +111,12 @@ export function useClaimNFT(tokenId: bigint): UseClaimNFTResult {
       setStep('confirming')
 
       const contracts = getContractAddresses()
+      console.log('[useClaimNFT] contracts:', contracts)
       if (!contracts) {
         throw new Error('No contracts configured for this network')
       }
 
+      console.log('[useClaimNFT] calling writeContractAsync...')
       const hash = await writeContractAsync({
         address: contracts.nft57b,
         abi: NFT57B_ABI,
@@ -119,8 +124,10 @@ export function useClaimNFT(tokenId: bigint): UseClaimNFTResult {
         args: [tokenId],
       })
 
+      console.log('[useClaimNFT] tx hash:', hash)
       setTxHash(hash)
     } catch (err) {
+      console.error('[useClaimNFT] Error:', err)
       const error =
         err instanceof Error ? err : new Error('Claim failed')
       setError(error)

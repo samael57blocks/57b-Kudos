@@ -35,6 +35,8 @@ export function RecognitionDetail({
 }: RecognitionDetailProps) {
   const { claim, step, error, reset } = useClaimNFT(tokenId ?? 0n)
 
+  console.log('[RecognitionDetail] render, tokenId:', tokenId, 'step:', step, 'isDisabled:', !tokenId)
+
   if (!category) return null
 
   const config = BADGE_CONFIG[category]
@@ -42,13 +44,18 @@ export function RecognitionDetail({
     ? getInitials(employeeName)
     : '??'
 
-  const isDisabled = !tokenId || step === 'confirming' || step === 'success'
+  const isDisabled = tokenId == null || step === 'confirming' || step === 'success'
 
   const handleClaim = async () => {
-    if (!tokenId) return
+    console.log('[RecognitionDetail] handleClaim called, tokenId:', tokenId)
+    if (tokenId == null) {
+      console.warn('[RecognitionDetail] No tokenId, returning early')
+      return
+    }
     try {
       await claim()
-    } catch {
+    } catch (err) {
+      console.error('[RecognitionDetail] claim() threw:', err)
       // Error is handled by the hook
     }
   }
