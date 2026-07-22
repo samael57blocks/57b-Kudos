@@ -45,6 +45,7 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
   const [error, setError] = useState<Error | null>(null)
   const isRegisteringRef = useRef(false)
+  const toastId = useRef<string | number>(undefined)
 
   // ── Effects: sync wagmi state to our step machine ──────────────────────────
 
@@ -82,13 +83,20 @@ export function useRegisterEmployee(): UseRegisterEmployeeResult {
 
   useEffect(() => {
     if (step === 'confirming') {
-      toast.loading('Adding employee...')
+      toastId.current = toast.loading('Adding employee...')
     } else if (step === 'success') {
+      toast.dismiss(toastId.current)
       toast.success('Employee added!')
     } else if (step === 'error') {
+      toast.dismiss(toastId.current)
       toast.error(error?.message ?? 'Add failed')
     }
   }, [step, error])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { toast.dismiss(toastId.current) }
+  }, [])
 
   // ── Register function ──────────────────────────────────────────────────────
 

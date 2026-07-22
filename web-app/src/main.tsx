@@ -30,6 +30,6 @@ createRoot(document.getElementById('root')!).render(
         </QueryClientProvider>
       </WagmiProvider>
     </BrowserRouter>
-    <Toaster position="bottom-right" />
+    <Toaster position="bottom-right" duration={4000} />
   </StrictMode>,
 )

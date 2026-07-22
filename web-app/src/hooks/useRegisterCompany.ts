@@ -53,6 +53,7 @@ export function useRegisterCompany(): UseRegisterCompanyResult {
   const [companyId, setCompanyId] = useState<bigint | undefined>(undefined)
   const [error, setError] = useState<Error | null>(null)
   const isRegisteringRef = useRef(false)
+  const toastId = useRef<string | number>(undefined)
 
   // ── Effects: sync wagmi state to our step machine ──────────────────────────
 
@@ -107,13 +108,20 @@ export function useRegisterCompany(): UseRegisterCompanyResult {
 
   useEffect(() => {
     if (step === 'confirming') {
-      toast.loading('Registering company...')
+      toastId.current = toast.loading('Registering company...')
     } else if (step === 'success') {
+      toast.dismiss(toastId.current)
       toast.success('Company registered!')
     } else if (step === 'error') {
+      toast.dismiss(toastId.current)
       toast.error(error?.message ?? 'Registration failed')
     }
   }, [step, error])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { toast.dismiss(toastId.current) }
+  }, [])
 
   // ── Register function ──────────────────────────────────────────────────────
 

@@ -45,6 +45,7 @@ export function useUpdateEmployeeName(): UseUpdateEmployeeNameResult {
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
   const [error, setError] = useState<Error | null>(null)
   const isUpdatingRef = useRef(false)
+  const toastId = useRef<string | number>(undefined)
 
   // ── Effects: sync wagmi state to our step machine ──────────────────────────
 
@@ -78,13 +79,20 @@ export function useUpdateEmployeeName(): UseUpdateEmployeeNameResult {
 
   useEffect(() => {
     if (step === 'confirming') {
-      toast.loading('Updating name...')
+      toastId.current = toast.loading('Updating name...')
     } else if (step === 'success') {
+      toast.dismiss(toastId.current)
       toast.success('Name updated!')
     } else if (step === 'error') {
+      toast.dismiss(toastId.current)
       toast.error(error?.message ?? 'Update failed')
     }
   }, [step, error])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { toast.dismiss(toastId.current) }
+  }, [])
 
   // ── Update function ──────────────────────────────────────────────────────
 
