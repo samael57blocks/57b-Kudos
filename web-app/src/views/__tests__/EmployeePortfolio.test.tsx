@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { EmployeePortfolio } from '../EmployeePortfolio'
-import type { ReactNode } from 'react'
 import type { EmployeeNFTData } from '../../hooks/useEmployeeNFTs'
 
 // --- Hoisted mocks ---
@@ -15,13 +14,6 @@ vi.mock('wagmi', () => ({
 
 vi.mock('../../hooks/useEmployeeNFTs', () => ({
   useEmployeeNFTs: mockUseEmployeeNFTs,
-}))
-
-// Mock Layout to just render children
-vi.mock('../../components/Layout', () => ({
-  Layout: ({ children }: { children: ReactNode }) => (
-    <div data-testid="layout">{children}</div>
-  ),
 }))
 
 // Mock child components
