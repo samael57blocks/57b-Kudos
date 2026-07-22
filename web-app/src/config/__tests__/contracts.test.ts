@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock import.meta.env
-const originalEnv = { ...import.meta.env }
-
 describe('getContractAddresses', () => {
   beforeEach(() => {
     vi.clearAllMocks()

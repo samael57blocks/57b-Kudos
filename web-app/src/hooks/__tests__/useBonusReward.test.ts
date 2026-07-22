@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useBonusReward } from '../useBonusReward'
 
 // --- Hoisted mocks ---
 
-const mockReadContract = vi.hoisted(() => vi.fn())
 const mockWriteContractAsync = vi.hoisted(() => vi.fn())
 const mockUseReadContract = vi.hoisted(() => vi.fn())
 const mockUseWriteContract = vi.hoisted(() => vi.fn())
@@ -90,6 +89,7 @@ describe('useBonusReward', () => {
       mockGetContractAddresses.mockReturnValue({
         nft57b: '0xNFT' as `0x${string}`,
         companyRegistry: '0xRegistry' as `0x${string}`,
+        bonusReward: undefined as unknown as `0x${string}`,
       })
       mockUseReadContract.mockReturnValue({
         data: undefined,

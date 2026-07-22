@@ -82,6 +82,7 @@ describe('useRecognitionToken', () => {
       mockGetContractAddresses.mockReturnValue({
         nft57b: '0xNFT' as `0x${string}`,
         companyRegistry: '0xRegistry' as `0x${string}`,
+        recognitionToken: undefined as unknown as `0x${string}`,
       })
       setupReadContractMock([
         { data: undefined, isFetching: false },
