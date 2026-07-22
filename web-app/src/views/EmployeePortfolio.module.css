@@ -57,58 +57,37 @@
   font-size: 16px;
   font-weight: 600;
   color: var(--text-h, #08060d);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
-.rewardItem {
+.rewardBadges {
   display: flex;
+  gap: 32px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.rewardBadgeItem {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid #e5e3ea;
-}
-
-.rewardItem:last-of-type {
-  border-bottom: none;
-}
-
-.rewardLabel {
-  font-size: 14px;
-  color: var(--text, #6b6375);
-}
-
-.rewardValue {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-h, #08060d);
-}
-
-.rewardImage {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.claimRewardsButton {
-  margin-top: 12px;
-  width: 100%;
-  padding: 10px;
-  border: none;
-  border-radius: 8px;
-  background: #7c3aed;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
+  gap: 8px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: transform 0.15s;
 }
 
-.claimRewardsButton:hover:not(:disabled) {
-  background: #6d28d9;
+.rewardBadgeItem:hover {
+  transform: translateY(-2px);
 }
 
-.claimRewardsButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.rewardBadgeItem:active {
+  transform: translateY(0);
+}
+
+.rewardBadgeLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text, #6b6375);
+  text-align: center;
 }
