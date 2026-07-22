@@ -33,9 +33,10 @@ export function RecognitionDetail({
   isOpen,
   onClose,
 }: RecognitionDetailProps) {
+  const { claim, step, error, reset } = useClaimNFT(tokenId ?? 0n)
+
   if (!category) return null
 
-  const { claim, step, isConfirming, error, reset } = useClaimNFT(tokenId ?? 0n)
   const config = BADGE_CONFIG[category]
   const initials = employeeName
     ? getInitials(employeeName)

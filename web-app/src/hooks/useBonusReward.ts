@@ -27,7 +27,6 @@ export function useBonusReward(
 
   const {
     data: balanceData,
-    isFetching,
     refetch,
   } = useReadContract({
     address: contracts?.bonusReward,

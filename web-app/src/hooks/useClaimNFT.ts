@@ -30,7 +30,6 @@ export function useClaimNFT(tokenId: bigint): UseClaimNFTResult {
   const { writeContractAsync, data: txHashData, error: writeError } =
     useWriteContract()
   const {
-    isLoading: isConfirming,
     isSuccess: txSuccess,
     error: confirmError,
   } = useWaitForTransactionReceipt({

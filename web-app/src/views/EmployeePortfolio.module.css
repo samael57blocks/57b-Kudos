@@ -42,3 +42,73 @@
 .errorMessage {
   font-size: 13px;
 }
+
+/* ── Rewards section ──────────────────────────────────────────────────── */
+
+.rewards {
+  margin-top: 24px;
+  padding: 20px;
+  background: #f8f7fa;
+  border-radius: 12px;
+  border: 1px solid #e5e3ea;
+}
+
+.rewardsTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+  margin-bottom: 12px;
+}
+
+.rewardItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e3ea;
+}
+
+.rewardItem:last-of-type {
+  border-bottom: none;
+}
+
+.rewardLabel {
+  font-size: 14px;
+  color: var(--text, #6b6375);
+}
+
+.rewardValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+}
+
+.rewardImage {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.claimRewardsButton {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #7c3aed;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.claimRewardsButton:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+.claimRewardsButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

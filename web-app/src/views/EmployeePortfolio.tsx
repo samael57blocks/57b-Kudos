@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useAccount } from 'wagmi'
+import { formatEther } from 'viem'
 import { ProfileHeader } from '../components/ProfileHeader'
 import { RecognitionGallery } from '../components/RecognitionGallery'
 import { RecognitionDetail } from '../components/RecognitionDetail'
 import { usePortfolioData } from '../hooks/usePortfolioData'
+import { useBonusReward } from '../hooks/useBonusReward'
+import { useRecognitionToken } from '../hooks/useRecognitionToken'
 import type { BadgeCategory } from '../lib/recognition-data'
 import styles from './EmployeePortfolio.module.css'
 
@@ -25,6 +28,8 @@ export function EmployeePortfolio() {
     isLoading,
     error,
   } = usePortfolioData(address)
+  const { balance, claimReward, isClaiming } = useBonusReward(address)
+  const { hasToken, tokenURI } = useRecognitionToken(address)
   const [selectedCategory, setSelectedCategory] = useState<BadgeCategory | null>(null)
 
   // Find the first NFT matching the selected category for description
@@ -58,6 +63,44 @@ export function EmployeePortfolio() {
         isLoading={isLoading}
         onSelect={setSelectedCategory}
       />
+
+      {/* Rewards Section */}
+      {(balance > 0n || hasToken) && (
+        <div className={styles.rewards}>
+          <h3 className={styles.rewardsTitle}>Rewards</h3>
+
+          {balance > 0n && (
+            <div className={styles.rewardItem}>
+              <span className={styles.rewardLabel}>Bonus Reward</span>
+              <span className={styles.rewardValue}>
+                {formatEther(balance)} 57BB
+              </span>
+            </div>
+          )}
+
+          {hasToken && tokenURI && (
+            <div className={styles.rewardItem}>
+              <span className={styles.rewardLabel}>Recognition Badge</span>
+              <img
+                src={tokenURI}
+                alt="Recognition Token"
+                className={styles.rewardImage}
+              />
+            </div>
+          )}
+
+          {balance > 0n && (
+            <button
+              type="button"
+              className={styles.claimRewardsButton}
+              onClick={() => claimReward()}
+              disabled={isClaiming}
+            >
+              {isClaiming ? 'Claiming...' : 'Claim Rewards'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Error state */}
       {error && (
