@@ -145,7 +145,7 @@ describe("RewardsIntegration", function () {
       );
 
       // ── Step 2: Register employee ──
-      await registry.write.registerEmployee([employee.account.address, 0n], {
+      await registry.write.registerEmployee([employee.account.address, 0n, ""], {
         account: companyAdmin.account,
       });
 
@@ -227,7 +227,7 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([employee.account.address, 0n], {
+      await registry.write.registerEmployee([employee.account.address, 0n, ""], {
         account: companyAdmin.account,
       });
       await registry.write.recognize([employee.account.address, "ipfs://test"], {
@@ -256,7 +256,7 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([employee.account.address, 0n], {
+      await registry.write.registerEmployee([employee.account.address, 0n, ""], {
         account: companyAdmin.account,
       });
       await registry.write.recognize([employee.account.address, "ipfs://test"], {
@@ -283,7 +283,7 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([employee.account.address, 0n], {
+      await registry.write.registerEmployee([employee.account.address, 0n, ""], {
         account: companyAdmin.account,
       });
       await registry.write.recognize([employee.account.address, "ipfs://test"], {
@@ -312,7 +312,7 @@ describe("RewardsIntegration", function () {
       // Try to register employee to a non-existent company (owner is DEFAULT_ADMIN)
       await expectRevertWithError(
         () =>
-          registry.write.registerEmployee([employee.account.address, 0n], {
+          registry.write.registerEmployee([employee.account.address, 0n, ""], {
             account: owner.account,
           }),
         registry.abi,
@@ -358,7 +358,7 @@ describe("RewardsIntegration", function () {
         ["Test", owner.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([owner.account.address, 0n], {
+      await registry.write.registerEmployee([owner.account.address, 0n, ""], {
         account: owner.account,
       });
 
@@ -430,7 +430,7 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([employee.account.address, 0n], {
+      await registry.write.registerEmployee([employee.account.address, 0n, ""], {
         account: companyAdmin.account,
       });
 
@@ -457,7 +457,7 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([employee.account.address, 0n], {
+      await registry.write.registerEmployee([employee.account.address, 0n, ""], {
         account: companyAdmin.account,
       });
 
@@ -511,7 +511,7 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([employee.account.address, 0n], {
+      await registry.write.registerEmployee([employee.account.address, 0n, ""], {
         account: companyAdmin.account,
       });
       await registry.write.recognize([employee.account.address, "ipfs://test"], {
@@ -601,7 +601,7 @@ describe("RewardsIntegration", function () {
         ["57Blocks", companyAdmin.account.address],
         { account: owner.account }
       );
-      await registry.write.registerEmployee([employee.account.address, 0n], {
+      await registry.write.registerEmployee([employee.account.address, 0n, ""], {
         account: companyAdmin.account,
       });
 
