@@ -65,6 +65,7 @@ export function useMintNFT(
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined)
   const [error, setError] = useState<Error | null>(null)
   const isMintingRef = useRef(false)
+  const toastId = useRef<string | number>(undefined)
 
   // ── Effects: sync wagmi state to our step machine ──────────────────────────
 
@@ -102,15 +103,24 @@ export function useMintNFT(
 
   useEffect(() => {
     if (step === 'uploading') {
-      toast.loading('Uploading metadata...')
+      toast.dismiss(toastId.current)
+      toastId.current = toast.loading('Uploading metadata...')
     } else if (step === 'confirming') {
-      toast.loading('Minting NFT...')
+      toast.dismiss(toastId.current)
+      toastId.current = toast.loading('Minting NFT...')
     } else if (step === 'success') {
+      toast.dismiss(toastId.current)
       toast.success('NFT minted!')
     } else if (step === 'error') {
+      toast.dismiss(toastId.current)
       toast.error(error?.message ?? 'Mint failed')
     }
   }, [step, error])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { toast.dismiss(toastId.current) }
+  }, [])
 
   // ── Mint function ──────────────────────────────────────────────────────────
 

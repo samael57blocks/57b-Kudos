@@ -27,7 +27,7 @@
 .error {
   text-align: center;
   padding: 40px 20px;
-  color: #ef4444;
+  color: var(--error);
   background: #fef2f2;
   border-radius: 12px;
   border: 1px solid #fecaca;
