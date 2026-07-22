@@ -43,51 +43,69 @@
   font-size: 13px;
 }
 
-/* ── Rewards section ──────────────────────────────────────────────────── */
+/* ── Section titles ────────────────────────────────────────────────────── */
 
-.rewards {
-  margin-top: 24px;
-  padding: 20px;
-  background: #f8f7fa;
-  border-radius: 12px;
-  border: 1px solid #e5e3ea;
-}
-
-.rewardsTitle {
+.sectionTitle {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-h, #08060d);
   margin-bottom: 16px;
 }
 
-.rewardBadges {
-  display: flex;
-  gap: 32px;
-  justify-content: center;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
+/* ── Shared badge clickable layout ─────────────────────────────────────── */
 
-.rewardBadgeItem {
+.badgeClickable {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   cursor: pointer;
-  transition: transform 0.15s;
+  padding: 12px;
+  border-radius: 12px;
+  transition: background 0.15s, transform 0.1s;
 }
 
-.rewardBadgeItem:hover {
-  transform: translateY(-2px);
+.badgeClickable:hover {
+  background: rgba(0, 0, 0, 0.03);
+  transform: translateY(-1px);
 }
 
-.rewardBadgeItem:active {
+.badgeClickable:active {
   transform: translateY(0);
 }
 
-.rewardBadgeLabel {
-  font-size: 12px;
-  font-weight: 500;
+.badgeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.badgeCategoryName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+}
+
+.badgeSubtitle {
+  font-size: 13px;
   color: var(--text, #6b6375);
-  text-align: center;
+}
+
+/* ── Recognition Badge section ─────────────────────────────────────────── */
+
+.recognitionBadge {
+  margin-top: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border-radius: 12px;
+  border: 1px solid #bbf7d0;
+}
+
+/* ── Rewards section ──────────────────────────────────────────────────── */
+
+.rewards {
+  margin-top: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-radius: 12px;
+  border: 1px solid #fde68a;
 }

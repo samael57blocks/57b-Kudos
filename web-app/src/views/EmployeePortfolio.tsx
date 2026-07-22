@@ -19,7 +19,8 @@ import styles from './EmployeePortfolio.module.css'
  * Layout:
  * - Profile header with avatar, name, and recognition count
  * - Recognition Portfolio grid with category HexBadges
- * - Rewards section with CircularBadge (BonusReward) + HexBadge (RecognitionToken)
+ * - Recognition Badge section (if claimed) — HexBadge with category name
+ * - Rewards section (if has balance) — CircularBadge for BonusReward
  * - Modals for claim flow and reward details
  */
 export function EmployeePortfolio() {
@@ -33,7 +34,13 @@ export function EmployeePortfolio() {
     error,
   } = usePortfolioData(address)
   const { balance, claimReward, isClaiming } = useBonusReward(address)
-  const { hasToken, tokenId, tokenURI } = useRecognitionToken(address)
+  const {
+    hasToken,
+    tokenId,
+    category: recognitionCategory,
+    employeeName: recognitionEmployeeName,
+    description: recognitionDescription,
+  } = useRecognitionToken(address)
 
   // Modal states
   const [selectedCategory, setSelectedCategory] = useState<BadgeCategory | null>(null)
@@ -43,12 +50,6 @@ export function EmployeePortfolio() {
   // Find the first NFT matching the selected category for description
   const selectedNft = selectedCategory
     ? nfts.find((nft) => nft.category === selectedCategory)
-    : null
-
-  // Find the original NFT that was claimed (for RecognitionToken detail)
-  // The RecognitionToken uses the same metadata URI as the original NFT
-  const recognitionNft = tokenURI
-    ? nfts.find((nft) => nft.tokenURI === tokenURI)
     : null
 
   if (!isConnected || !address) {
@@ -78,42 +79,44 @@ export function EmployeePortfolio() {
         onSelect={setSelectedCategory}
       />
 
-      {/* Rewards Section */}
-      {(balance > 0n || hasToken) && (
+      {/* Recognition Badge — Permanent, non-transferable */}
+      {hasToken && recognitionCategory && (
+        <div className={styles.recognitionBadge}>
+          <h3 className={styles.sectionTitle}>Recognition Badge</h3>
+          <div
+            className={styles.badgeClickable}
+            onClick={() => setShowRecognitionDetail(true)}
+            onKeyDown={(e) => e.key === 'Enter' && setShowRecognitionDetail(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <Badge category={recognitionCategory} size="lg" />
+            <div className={styles.badgeInfo}>
+              <span className={styles.badgeCategoryName}>
+                {recognitionCategory}
+              </span>
+              <span className={styles.badgeSubtitle}>Permanent Recognition</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rewards Section — BonusReward only */}
+      {balance > 0n && (
         <div className={styles.rewards}>
-          <h3 className={styles.rewardsTitle}>Rewards</h3>
-
-          <div className={styles.rewardBadges}>
-            {/* BonusReward — Circular Badge */}
-            {balance > 0n && (
-              <div
-                className={styles.rewardBadgeItem}
-                onClick={() => setShowRewardDetail(true)}
-                onKeyDown={(e) => e.key === 'Enter' && setShowRewardDetail(true)}
-                role="button"
-                tabIndex={0}
-              >
-                <CircularBadge
-                  amount={formatEther(balance)}
-                  size="lg"
-                />
-                <span className={styles.rewardBadgeLabel}>Bonus Reward</span>
-              </div>
-            )}
-
-            {/* RecognitionToken — Hex Badge */}
-            {hasToken && (
-              <div
-                className={styles.rewardBadgeItem}
-                onClick={() => setShowRecognitionDetail(true)}
-                onKeyDown={(e) => e.key === 'Enter' && setShowRecognitionDetail(true)}
-                role="button"
-                tabIndex={0}
-              >
-                <Badge category={recognitionNft?.category ?? 'Innovation'} size="lg" />
-                <span className={styles.rewardBadgeLabel}>Recognition</span>
-              </div>
-            )}
+          <h3 className={styles.sectionTitle}>Rewards</h3>
+          <div
+            className={styles.badgeClickable}
+            onClick={() => setShowRewardDetail(true)}
+            onKeyDown={(e) => e.key === 'Enter' && setShowRewardDetail(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <CircularBadge amount={formatEther(balance)} size="lg" />
+            <div className={styles.badgeInfo}>
+              <span className={styles.badgeCategoryName}>Bonus Reward</span>
+              <span className={styles.badgeSubtitle}>{formatEther(balance)} 57BB</span>
+            </div>
           </div>
         </div>
       )}
@@ -126,7 +129,7 @@ export function EmployeePortfolio() {
         </div>
       )}
 
-      {/* Recognition Detail Modal — Original NFT from gallery */}
+      {/* Recognition Detail Modal — From gallery NFT selection */}
       <RecognitionDetail
         category={selectedCategory}
         employeeName={employeeName}
@@ -145,11 +148,11 @@ export function EmployeePortfolio() {
         isClaiming={isClaiming}
       />
 
-      {/* RecognitionToken Detail Modal — Shows original NFT info */}
+      {/* RecognitionToken Detail Modal — Shows original NFT info from metadata */}
       <RecognitionDetail
-        category={recognitionNft?.category ?? null}
-        employeeName={employeeName}
-        description={recognitionNft?.description ?? null}
+        category={recognitionCategory}
+        employeeName={recognitionEmployeeName}
+        description={recognitionDescription}
         tokenId={tokenId}
         isOpen={showRecognitionDetail}
         onClose={() => setShowRecognitionDetail(false)}
