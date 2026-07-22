@@ -129,7 +129,7 @@ describe('AddEmployeeDialog', () => {
   // ---- validation: valid inputs ----
 
   it('submit button enabled and form submits when both fields valid', async () => {
-    const { onSuccess } = renderDialog()
+    const { onSuccess: _onSuccess } = renderDialog()
 
     fillAddress(VALID_ADDRESS)
     fillName('Alice')

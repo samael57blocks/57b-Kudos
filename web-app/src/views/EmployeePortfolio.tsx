@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useAccount } from 'wagmi'
-import { Layout } from '../components/Layout'
 import { ProfileHeader } from '../components/ProfileHeader'
 import { RecognitionGallery } from '../components/RecognitionGallery'
 import { RecognitionDetail } from '../components/RecognitionDetail'
@@ -35,51 +34,47 @@ export function EmployeePortfolio() {
 
   if (!isConnected || !address) {
     return (
-      <Layout>
-        <div className={styles.connectMessage}>
-          <p className={styles.connectHeading}>Connect your wallet to view your portfolio</p>
-          <p className={styles.smallText}>
-            Your recognition NFTs will appear here once you connect.
-          </p>
-        </div>
-      </Layout>
+      <div className={styles.connectMessage}>
+        <p className={styles.connectHeading}>Connect your wallet to view your portfolio</p>
+        <p className={styles.smallText}>
+          Your recognition NFTs will appear here once you connect.
+        </p>
+      </div>
     )
   }
 
   return (
-    <Layout>
-      <div className={styles.wrapper}>
-        {/* Profile Header */}
-        <ProfileHeader
-          employeeName={employeeName}
-          address={address}
-          totalRecognitions={totalRecognitions}
-        />
+    <div className={styles.wrapper}>
+      {/* Profile Header */}
+      <ProfileHeader
+        employeeName={employeeName}
+        address={address}
+        totalRecognitions={totalRecognitions}
+      />
 
-        {/* Recognition Portfolio */}
-        <RecognitionGallery
-          categories={categories}
-          isLoading={isLoading}
-          onSelect={setSelectedCategory}
-        />
+      {/* Recognition Portfolio */}
+      <RecognitionGallery
+        categories={categories}
+        isLoading={isLoading}
+        onSelect={setSelectedCategory}
+      />
 
-        {/* Error state */}
-        {error && (
-          <div className={styles.error} role="alert">
-            <p className={styles.errorTitle}>Failed to load recognitions</p>
-            <p className={styles.errorMessage}>{error.message}</p>
-          </div>
-        )}
+      {/* Error state */}
+      {error && (
+        <div className={styles.error} role="alert">
+          <p className={styles.errorTitle}>Failed to load recognitions</p>
+          <p className={styles.errorMessage}>{error.message}</p>
+        </div>
+      )}
 
-        {/* Recognition Detail Modal */}
-        <RecognitionDetail
-          category={selectedCategory}
-          employeeName={employeeName}
-          description={selectedNft?.description ?? null}
-          isOpen={!!selectedCategory}
-          onClose={() => setSelectedCategory(null)}
-        />
-      </div>
-    </Layout>
+      {/* Recognition Detail Modal */}
+      <RecognitionDetail
+        category={selectedCategory}
+        employeeName={employeeName}
+        description={selectedNft?.description ?? null}
+        isOpen={!!selectedCategory}
+        onClose={() => setSelectedCategory(null)}
+      />
+    </div>
   )
 }

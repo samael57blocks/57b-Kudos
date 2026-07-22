@@ -1,5 +1,4 @@
 import { useAccount } from 'wagmi'
-import { Layout } from '../components/Layout'
 import { useMintCompanyId } from '../hooks/useMintCompanyId'
 import { useCompanyEmployees } from '../hooks/useCompanyEmployees'
 import { MinterMintForm } from '../components/MinterMintForm'
@@ -27,34 +26,30 @@ export function MintNftPage() {
 
   if (!isConnected) {
     return (
-      <Layout>
-        <div className={styles.connect}>
-          <p>Connect your wallet to mint Kudos NFTs.</p>
-        </div>
-      </Layout>
+      <div className={styles.connect}>
+        <p>Connect your wallet to mint Kudos NFTs.</p>
+      </div>
     )
   }
 
   return (
-    <Layout>
-      <div className={styles.container}>
-        <h1 className={styles.title}>Give a Recognition</h1>
-        <p className={styles.subtitle}>
-          Celebrate a colleague's contribution by awarding them a badge.
-        </p>
+    <div className={styles.container}>
+      <h1 className={styles.title}>Give a Recognition</h1>
+      <p className={styles.subtitle}>
+        Celebrate a colleague's contribution by awarding them a badge.
+      </p>
 
-        {resolveError && (
-          <div className={styles.error} role="alert">
-            {resolveError.message}
-          </div>
-        )}
+      {resolveError && (
+        <div className={styles.error} role="alert">
+          {resolveError.message}
+        </div>
+      )}
 
-        {isCompanyLoading || isEmployeesLoading ? (
-          <div className={styles.loading}>Loading employees...</div>
-        ) : companyId != null ? (
-          <MinterMintForm companyId={companyId} employees={employees} />
-        ) : null}
-      </div>
-    </Layout>
+      {isCompanyLoading || isEmployeesLoading ? (
+        <div className={styles.loading}>Loading employees...</div>
+      ) : companyId != null ? (
+        <MinterMintForm companyId={companyId} employees={employees} />
+      ) : null}
+    </div>
   )
 }
