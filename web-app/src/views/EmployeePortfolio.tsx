@@ -72,6 +72,7 @@ export function EmployeePortfolio() {
         category={selectedCategory}
         employeeName={employeeName}
         description={selectedNft?.description ?? null}
+        tokenId={selectedNft?.tokenId ?? null}
         isOpen={!!selectedCategory}
         onClose={() => setSelectedCategory(null)}
       />

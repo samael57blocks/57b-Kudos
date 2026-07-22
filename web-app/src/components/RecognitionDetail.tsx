@@ -2,6 +2,7 @@ import { Dialog } from './Dialog'
 import { BADGE_CONFIG, type BadgeCategory } from '../lib/recognition-data'
 import styles from './RecognitionDetail.module.css'
 import { Badge } from './HexBadge/Badge'
+import { useClaimNFT } from '../hooks/useClaimNFT'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -9,6 +10,7 @@ interface RecognitionDetailProps {
   category: BadgeCategory | null
   employeeName: string | null
   description: string | null
+  tokenId: bigint | null
   isOpen: boolean
   onClose: () => void
 }
@@ -27,25 +29,45 @@ export function RecognitionDetail({
   category,
   employeeName,
   description,
+  tokenId,
   isOpen,
   onClose,
 }: RecognitionDetailProps) {
   if (!category) return null
 
+  const { claim, step, isConfirming, error, reset } = useClaimNFT(tokenId ?? 0n)
   const config = BADGE_CONFIG[category]
   const initials = employeeName
     ? getInitials(employeeName)
     : '??'
 
+  const isDisabled = !tokenId || step === 'confirming' || step === 'success'
+
+  const handleClaim = async () => {
+    if (!tokenId) return
+    try {
+      await claim()
+    } catch {
+      // Error is handled by the hook
+    }
+  }
+
+  const handleClose = () => {
+    if (step === 'success') {
+      reset()
+    }
+    onClose()
+  }
+
   return (
-    <Dialog open={isOpen} onClose={onClose}>
+    <Dialog open={isOpen} onClose={handleClose}>
       <div className={styles.dialog} style={{ '--category-color': config.color } as React.CSSProperties}>
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className={styles.header}>
           <button
             type="button"
             className={styles.closeButton}
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
           >
             ✕
@@ -72,6 +94,10 @@ export function RecognitionDetail({
           {description && (
             <p className={styles.description}>"{description}"</p>
           )}
+
+          {error && (
+            <p className={styles.description} role="alert">{error.message}</p>
+          )}
         </div>
 
         {/* ── Footer ───────────────────────────────────────────────────────── */}
@@ -79,9 +105,10 @@ export function RecognitionDetail({
           <button
             type="button"
             className={styles.claimButton}
-            onClick={onClose}
+            onClick={handleClaim}
+            disabled={isDisabled}
           >
-            Claim
+            {step === 'confirming' ? 'Claiming...' : step === 'success' ? 'Claimed ✓' : 'Claim'}
           </button>
         </div>
       </div>
