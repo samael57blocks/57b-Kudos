@@ -43,13 +43,17 @@ function extractEmployeeName(attributes: Record<string, unknown>[]): string | nu
   return value || null
 }
 
+/** Max token IDs to scan when searching for the employee's recognition badge. */
+const MAX_TOKEN_SCAN = 20
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
  * Discover whether the connected wallet owns a RecognitionToken.
  *
- * Sequential reads: balanceOf → tokenOfOwnerByIndex(0) → tokenURI
- * Then resolves metadata to extract category, employeeName, description.
+ * Scans token IDs 0..N using ownerOf() (ERC721 base — no Enumerable needed).
+ * Once a token owned by the address is found, fetches tokenURI and resolves
+ * metadata to extract category, employeeName, description.
  *
  * Refetches when `refetchTrigger` changes (e.g. after a claim).
  */
@@ -85,17 +89,35 @@ export function useRecognitionToken(
       setIsLoading(true)
 
       try {
-        // Step 1: balanceOf
-        const balance = (await publicClient.readContract({
-          address: contracts.recognitionToken,
-          abi: RECOGNITION_TOKEN_ABI,
-          functionName: 'balanceOf',
-          args: [address],
-        })) as bigint
+        // Scan token IDs to find one owned by this address.
+        // RecognitionToken doesn't implement ERC721Enumerable,
+        // so we can't use tokenOfOwnerByIndex — use ownerOf() instead.
+        let foundId: bigint | null = null
+        for (let i = 0; i < MAX_TOKEN_SCAN; i++) {
+          const id = BigInt(i)
+          try {
+            const owner = (await publicClient.readContract({
+              address: contracts.recognitionToken,
+              abi: RECOGNITION_TOKEN_ABI,
+              functionName: 'ownerOf',
+              args: [id],
+            })) as string
+
+            if (owner.toLowerCase() === address.toLowerCase()) {
+              foundId = id
+              break
+            }
+          } catch {
+            // ownerOf reverts for non-existent tokens — no more tokens to scan
+            break
+          }
+
+          if (cancelled) return
+        }
 
         if (cancelled) return
 
-        if (balance === 0n) {
+        if (foundId === null) {
           setHasToken(false)
           setTokenId(null)
           setTokenURI(null)
@@ -106,30 +128,20 @@ export function useRecognitionToken(
         }
 
         setHasToken(true)
+        setTokenId(foundId)
 
-        // Step 2: tokenOfOwnerByIndex(0)
-        const id = (await publicClient.readContract({
-          address: contracts.recognitionToken,
-          abi: RECOGNITION_TOKEN_ABI,
-          functionName: 'tokenOfOwnerByIndex',
-          args: [address, 0n],
-        })) as bigint
-
-        if (cancelled) return
-        setTokenId(id)
-
-        // Step 3: tokenURI
+        // Fetch tokenURI
         const uri = (await publicClient.readContract({
           address: contracts.recognitionToken,
           abi: RECOGNITION_TOKEN_ABI,
           functionName: 'tokenURI',
-          args: [id],
+          args: [foundId],
         })) as string
 
         if (cancelled) return
         setTokenURI(uri)
 
-        // Step 4: Resolve metadata
+        // Resolve metadata
         try {
           const meta = await resolveMetadata(uri)
           if (cancelled) return

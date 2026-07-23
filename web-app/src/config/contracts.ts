@@ -91,7 +91,7 @@ export const COMPANY_REGISTRY_ABI = parseAbi([
 
 export const RECOGNITION_TOKEN_ABI = parseAbi([
   'function balanceOf(address owner) external view returns (uint256)',
-  'function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)',
+  'function ownerOf(uint256 tokenId) external view returns (address)',
   'function tokenURI(uint256 tokenId) external view returns (string)',
   'function hasRole(bytes32 role, address account) external view returns (bool)',
   'function grantRole(bytes32 role, address account) external',
