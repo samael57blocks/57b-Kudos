@@ -6,10 +6,8 @@ import { RecognitionGallery } from '../components/RecognitionGallery'
 import { RecognitionDetail } from '../components/RecognitionDetail'
 import { CircularBadge } from '../components/CircularBadge'
 import { RewardDetail } from '../components/RewardDetail'
-import { Badge } from '../components/HexBadge/Badge'
 import { usePortfolioData } from '../hooks/usePortfolioData'
 import { useBonusReward } from '../hooks/useBonusReward'
-import { useRecognitionToken } from '../hooks/useRecognitionToken'
 import type { BadgeCategory } from '../lib/recognition-data'
 import styles from './EmployeePortfolio.module.css'
 
@@ -19,9 +17,9 @@ import styles from './EmployeePortfolio.module.css'
  * Layout:
  * - Profile header with avatar, name, and recognition count
  * - Recognition Portfolio grid with category HexBadges
- * - Recognition Badge section (if claimed) — HexBadge with category name
- * - Rewards section (if has balance) — CircularBadge for BonusReward
- * - Modals for claim flow and reward details
+ *   - NFT57B (unclaimed): click → RecognitionDetail with Claim button
+ *   - RecognitionToken (claimed): click → RecognitionDetail with "Already Claimed"
+ * - Rewards section (if has BonusReward balance) — CircularBadge
  */
 export function EmployeePortfolio() {
   const { address, isConnected } = useAccount()
@@ -34,23 +32,19 @@ export function EmployeePortfolio() {
     error,
   } = usePortfolioData(address)
   const { balance, claimReward, isClaiming } = useBonusReward(address)
-  const {
-    hasToken,
-    tokenId,
-    category: recognitionCategory,
-    employeeName: recognitionEmployeeName,
-    description: recognitionDescription,
-  } = useRecognitionToken(address)
 
   // Modal states
   const [selectedCategory, setSelectedCategory] = useState<BadgeCategory | null>(null)
   const [showRewardDetail, setShowRewardDetail] = useState(false)
-  const [showRecognitionDetail, setShowRecognitionDetail] = useState(false)
 
-  // Find the first NFT matching the selected category for description
+  // Find NFT data for the selected category
+  // Prefer unclaimed NFT57B (for claim flow), fallback to claimed RecognitionToken
   const selectedNft = selectedCategory
-    ? nfts.find((nft) => nft.category === selectedCategory)
+    ? nfts.find((nft) => nft.category === selectedCategory && !nft.isClaimed)
+      ?? nfts.find((nft) => nft.category === selectedCategory)
     : null
+
+  const isClaimed = selectedNft?.isClaimed ?? false
 
   if (!isConnected || !address) {
     return (
@@ -72,34 +66,12 @@ export function EmployeePortfolio() {
         totalRecognitions={totalRecognitions}
       />
 
-      {/* Recognition Portfolio */}
+      {/* Recognition Portfolio — NFT57B + RecognitionToken */}
       <RecognitionGallery
         categories={categories}
         isLoading={isLoading}
         onSelect={setSelectedCategory}
       />
-
-      {/* Recognition Badge — Permanent, non-transferable */}
-      {hasToken && recognitionCategory && (
-        <div className={styles.recognitionBadge}>
-          <h3 className={styles.sectionTitle}>Recognition Badge</h3>
-          <div
-            className={styles.badgeClickable}
-            onClick={() => setShowRecognitionDetail(true)}
-            onKeyDown={(e) => e.key === 'Enter' && setShowRecognitionDetail(true)}
-            role="button"
-            tabIndex={0}
-          >
-            <Badge category={recognitionCategory} size="lg" />
-            <div className={styles.badgeInfo}>
-              <span className={styles.badgeCategoryName}>
-                {recognitionCategory}
-              </span>
-              <span className={styles.badgeSubtitle}>Permanent Recognition</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Rewards Section — BonusReward only */}
       {balance > 0n && (
@@ -129,14 +101,15 @@ export function EmployeePortfolio() {
         </div>
       )}
 
-      {/* Recognition Detail Modal — From gallery NFT selection */}
+      {/* Recognition Detail Modal — Works for both NFT57B and RecognitionToken */}
       <RecognitionDetail
         category={selectedCategory}
         employeeName={employeeName}
         description={selectedNft?.description ?? null}
-        tokenId={selectedNft?.tokenId ?? null}
+        tokenId={isClaimed ? null : (selectedNft?.tokenId ?? null)}
         isOpen={!!selectedCategory}
         onClose={() => setSelectedCategory(null)}
+        isClaimed={isClaimed}
       />
 
       {/* BonusReward Detail Modal */}
@@ -146,16 +119,6 @@ export function EmployeePortfolio() {
         onClose={() => setShowRewardDetail(false)}
         onClaim={claimReward}
         isClaiming={isClaiming}
-      />
-
-      {/* RecognitionToken Detail Modal — Shows original NFT info from metadata */}
-      <RecognitionDetail
-        category={recognitionCategory}
-        employeeName={recognitionEmployeeName}
-        description={recognitionDescription}
-        tokenId={tokenId}
-        isOpen={showRecognitionDetail}
-        onClose={() => setShowRecognitionDetail(false)}
       />
     </div>
   )

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { resolveMetadata } from '../utils/ipfs'
 import { useEmployeeNFTs, type EmployeeNFTData } from './useEmployeeNFTs'
+import { useRecognitionToken } from './useRecognitionToken'
 import type { BadgeCategory } from '../lib/recognition-data'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -10,11 +11,13 @@ export interface NFTWithMetadata extends EmployeeNFTData {
   category: BadgeCategory | null
   employeeName: string | null
   description: string | null
+  isClaimed: boolean
 }
 
 export interface CategoryGroup {
   category: BadgeCategory
   count: number
+  hasClaimed: boolean
 }
 
 export interface PortfolioData {
@@ -58,13 +61,16 @@ function extractEmployeeName(attributes: Record<string, unknown>[]): string | nu
 /**
  * Fetch portfolio data: resolves metadata for all NFTs and extracts
  * categories, employee name, and recognition counts.
+ *
+ * Includes both NFT57B tokens (unclaimed) and RecognitionToken (claimed).
  */
 export function usePortfolioData(
   address: `0x${string}` | undefined,
 ): PortfolioData {
   const { nfts, isLoading: nftsLoading, error: nftsError } = useEmployeeNFTs(address)
+  const { hasToken, category: recognitionCategory, employeeName: recognitionEmployeeName, description: recognitionDescription, isLoading: recognitionLoading } = useRecognitionToken(address)
 
-  // Resolve metadata for each NFT in parallel
+  // Resolve metadata for each NFT57B in parallel
   const metadataResults = useQueries({
     queries: nfts.map((nft) => ({
       queryKey: ['token-metadata', nft.tokenURI],
@@ -74,12 +80,12 @@ export function usePortfolioData(
     })),
   })
 
-  const isLoading = nftsLoading || metadataResults.some((r) => r.isLoading)
+  const isLoading = nftsLoading || recognitionLoading || metadataResults.some((r) => r.isLoading)
   const error = nftsError || metadataResults.find((r) => r.error)?.error as Error | null
 
-  // Build enriched NFT list with metadata
+  // Build enriched NFT list with metadata (NFT57B tokens — not claimed)
   const enrichedNfts = useMemo<NFTWithMetadata[]>(() => {
-    return nfts.map((nft, i) => {
+    const nft57bList = nfts.map((nft, i) => {
       const meta = metadataResults[i]?.data as Record<string, unknown> | undefined
       const attributes = (meta?.attributes as Record<string, unknown>[]) ?? []
       const description = (meta?.description as string) ?? null
@@ -89,20 +95,41 @@ export function usePortfolioData(
         category: extractCategory(attributes),
         employeeName: extractEmployeeName(attributes),
         description,
+        isClaimed: false,
       }
     })
-  }, [nfts, metadataResults])
 
-  // Group by category
+    // Add RecognitionToken if the employee has one
+    if (hasToken && recognitionCategory) {
+      nft57bList.push({
+        tokenId: 0n, // RecognitionToken tokenId (not the same as NFT57B)
+        tokenURI: '', // Already resolved via useRecognitionToken
+        companyName: null,
+        category: recognitionCategory,
+        employeeName: recognitionEmployeeName ?? null,
+        description: recognitionDescription ?? null,
+        isClaimed: true,
+      })
+    }
+
+    return nft57bList
+  }, [nfts, metadataResults, hasToken, recognitionCategory, recognitionEmployeeName, recognitionDescription])
+
+  // Group by category, merging claimed and unclaimed counts
   const categories = useMemo<CategoryGroup[]>(() => {
-    const map = new Map<BadgeCategory, number>()
+    const map = new Map<BadgeCategory, { count: number; hasClaimed: boolean }>()
     for (const nft of enrichedNfts) {
+      console.log('nft -', nft)
       if (nft.category) {
-        map.set(nft.category, (map.get(nft.category) ?? 0) + 1)
+        const existing = map.get(nft.category) ?? { count: 0, hasClaimed: false }
+        map.set(nft.category, {
+          count: existing.count + 1,
+          hasClaimed: existing.hasClaimed || nft.isClaimed,
+        })
       }
     }
     return Array.from(map.entries())
-      .map(([category, count]) => ({ category, count }))
+      .map(([category, { count, hasClaimed }]) => ({ category, count, hasClaimed }))
       .sort((a, b) => b.count - a.count) // Most frequent first
   }, [enrichedNfts])
 

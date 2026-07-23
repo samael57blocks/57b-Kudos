@@ -90,16 +90,6 @@
   color: var(--text, #6b6375);
 }
 
-/* ── Recognition Badge section ─────────────────────────────────────────── */
-
-.recognitionBadge {
-  margin-top: 24px;
-  padding: 20px;
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-  border-radius: 12px;
-  border: 1px solid #bbf7d0;
-}
-
 /* ── Rewards section ──────────────────────────────────────────────────── */
 
 .rewards {

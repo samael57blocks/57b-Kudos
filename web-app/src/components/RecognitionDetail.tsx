@@ -13,6 +13,7 @@ interface RecognitionDetailProps {
   tokenId: bigint | null
   isOpen: boolean
   onClose: () => void
+  isClaimed?: boolean
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -23,7 +24,7 @@ interface RecognitionDetailProps {
  * Layout:
  * - Header: category color background, HexBadge with box-shadow, titles
  * - Body: white background, avatar + name, description in italic
- * - Footer: "Claim" button with category color
+ * - Footer: "Claim" button with category color (hidden if isClaimed)
  */
 export function RecognitionDetail({
   category,
@@ -32,10 +33,9 @@ export function RecognitionDetail({
   tokenId,
   isOpen,
   onClose,
+  isClaimed = false,
 }: RecognitionDetailProps) {
   const { claim, step, error, reset } = useClaimNFT(tokenId ?? 0n)
-
-  console.log('[RecognitionDetail] render, tokenId:', tokenId, 'step:', step, 'isDisabled:', !tokenId)
 
   if (!category) return null
 
@@ -110,14 +110,21 @@ export function RecognitionDetail({
 
         {/* ── Footer ───────────────────────────────────────────────────────── */}
         <div className={styles.footer}>
-          <button
-            type="button"
-            className={styles.claimButton}
-            onClick={handleClaim}
-            disabled={isDisabled}
-          >
-            {step === 'confirming' ? 'Claiming...' : step === 'success' ? 'Claimed ✓' : 'Claim'}
-          </button>
+          {isClaimed ? (
+            <div className={styles.claimedStatus}>
+              <span className={styles.claimedIcon}>✓</span>
+              <span className={styles.claimedText}>Already Claimed</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={styles.claimButton}
+              onClick={handleClaim}
+              disabled={isDisabled}
+            >
+              {step === 'confirming' ? 'Claiming...' : step === 'success' ? 'Claimed ✓' : 'Claim'}
+            </button>
+          )}
         </div>
       </div>
     </Dialog>
