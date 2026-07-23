@@ -1,5 +1,5 @@
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { useCallback, useState } from 'react'
+import { usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useCallback, useEffect, useState } from 'react'
 import { BONUS_REWARD_ABI, getContractAddresses } from '../config/contracts'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -9,7 +9,6 @@ export interface UseBonusRewardResult {
   claimReward: () => Promise<void>
   isClaiming: boolean
   error: Error | null
-  refetch: () => void
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -17,27 +16,49 @@ export interface UseBonusRewardResult {
 /**
  * Read BonusReward balance and claim rewards.
  *
- * Uses `useReadContract` for balanceOf and `useWriteContract` for claimReward.
+ * Uses `publicClient.readContract` for balanceOf (refetches on trigger change)
+ * and `useWriteContract` for claimReward.
  * If bonusReward address is not configured, returns zero balance.
  */
 export function useBonusReward(
   address: `0x${string}` | undefined,
+  refetchTrigger = 0,
 ): UseBonusRewardResult {
+  const publicClient = usePublicClient()
   const contracts = getContractAddresses()
 
-  const {
-    data: balanceData,
-    refetch,
-  } = useReadContract({
-    address: contracts?.bonusReward,
-    abi: BONUS_REWARD_ABI,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!contracts?.bonusReward && !!address,
-      staleTime: 30_000,
-    },
-  })
+  const [balance, setBalance] = useState(0n)
+  const [isBalanceLoading, setIsBalanceLoading] = useState(false)
+
+  // Fetch balance via publicClient (refetches when refetchTrigger changes)
+  useEffect(() => {
+    if (!address || !publicClient || !contracts?.bonusReward) {
+      setBalance(0n)
+      return
+    }
+
+    let cancelled = false
+
+    const fetchBalance = async () => {
+      setIsBalanceLoading(true)
+      try {
+        const data = (await publicClient.readContract({
+          address: contracts.bonusReward,
+          abi: BONUS_REWARD_ABI,
+          functionName: 'balanceOf',
+          args: [address],
+        })) as bigint
+        if (!cancelled) setBalance(data)
+      } catch {
+        if (!cancelled) setBalance(0n)
+      } finally {
+        if (!cancelled) setIsBalanceLoading(false)
+      }
+    }
+
+    fetchBalance()
+    return () => { cancelled = true }
+  }, [address, publicClient, contracts?.bonusReward, refetchTrigger])
 
   const { writeContractAsync, data: txHash, error: writeError } = useWriteContract()
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash })
@@ -56,22 +77,20 @@ export function useBonusReward(
         abi: BONUS_REWARD_ABI,
         functionName: 'claimReward',
       })
-      // Refetch balance after claim
-      refetch()
+      // Balance will refetch via refetchTrigger from parent
     } catch (err) {
       const e = err instanceof Error ? err : new Error('Failed to claim rewards')
       setError(e)
       throw e
     }
-  }, [contracts?.bonusReward, writeContractAsync, refetch])
+  }, [contracts?.bonusReward, writeContractAsync])
 
   const hookError = writeError || error
 
   return {
-    balance: balanceData ?? 0n,
+    balance,
     claimReward,
     isClaiming: isConfirming,
     error: hookError instanceof Error ? hookError : null,
-    refetch,
   }
 }

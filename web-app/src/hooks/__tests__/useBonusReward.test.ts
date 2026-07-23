@@ -5,9 +5,11 @@ import { useBonusReward } from '../useBonusReward'
 // --- Hoisted mocks ---
 
 const mockWriteContractAsync = vi.hoisted(() => vi.fn())
-const mockUseReadContract = vi.hoisted(() => vi.fn())
 const mockUseWriteContract = vi.hoisted(() => vi.fn())
 const mockUseWaitForTransactionReceipt = vi.hoisted(() => vi.fn())
+const mockPublicClient = vi.hoisted(() => ({
+  readContract: vi.fn(),
+}))
 const mockGetContractAddresses = vi.hoisted(() =>
   vi.fn(() => ({
     nft57b: '0xNFT' as `0x${string}`,
@@ -17,7 +19,7 @@ const mockGetContractAddresses = vi.hoisted(() =>
 )
 
 vi.mock('wagmi', () => ({
-  useReadContract: mockUseReadContract,
+  usePublicClient: () => mockPublicClient,
   useWriteContract: mockUseWriteContract,
   useWaitForTransactionReceipt: mockUseWaitForTransactionReceipt,
 }))
@@ -38,13 +40,11 @@ function setupMocks(options?: {
   balance?: bigint
   writeHash?: `0x${string}`
   writeError?: Error
-  wtfrIsSuccess?: boolean
 }) {
   const {
     balance = 100n * 10n ** 18n,
     writeHash,
     writeError,
-    wtfrIsSuccess = true,
   } = options ?? {}
 
   mockGetContractAddresses.mockReturnValue({
@@ -52,11 +52,7 @@ function setupMocks(options?: {
     companyRegistry: '0xRegistry' as `0x${string}`,
     bonusReward: '0xBonus' as `0x${string}`,
   })
-  mockUseReadContract.mockReturnValue({
-    data: balance,
-    isFetching: false,
-    refetch: vi.fn(),
-  })
+  mockPublicClient.readContract.mockResolvedValue(balance)
   mockUseWriteContract.mockReturnValue({
     writeContractAsync: mockWriteContractAsync,
     data: writeHash,
@@ -65,7 +61,7 @@ function setupMocks(options?: {
   })
   mockUseWaitForTransactionReceipt.mockReturnValue({
     isLoading: false,
-    isSuccess: wtfrIsSuccess,
+    isSuccess: true,
     error: null,
   })
   mockWriteContractAsync.mockResolvedValue('0xHash' as `0x${string}`)
@@ -80,23 +76,21 @@ describe('useBonusReward', () => {
   })
 
   describe('balance read', () => {
-    it('returns balance from contract', () => {
+    it('returns balance from contract', async () => {
       const { result } = renderHook(() => useBonusReward(MOCK_ADDRESS))
+      // Wait for useEffect fetch to complete
+      await act(async () => {})
       expect(result.current.balance).toBe(100n * 10n ** 18n)
     })
 
-    it('returns 0 when no bonusReward address configured', () => {
+    it('returns 0 when no bonusReward address configured', async () => {
       mockGetContractAddresses.mockReturnValue({
         nft57b: '0xNFT' as `0x${string}`,
         companyRegistry: '0xRegistry' as `0x${string}`,
         bonusReward: undefined as unknown as `0x${string}`,
       })
-      mockUseReadContract.mockReturnValue({
-        data: undefined,
-        isFetching: false,
-        refetch: vi.fn(),
-      })
       const { result } = renderHook(() => useBonusReward(MOCK_ADDRESS))
+      await act(async () => {})
       expect(result.current.balance).toBe(0n)
     })
   })
@@ -104,6 +98,7 @@ describe('useBonusReward', () => {
   describe('claimReward flow', () => {
     it('calls writeContractAsync with claimReward function', async () => {
       const { result } = renderHook(() => useBonusReward(MOCK_ADDRESS))
+      await act(async () => {})
 
       await act(async () => {
         await result.current.claimReward()

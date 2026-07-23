@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useRecognitionToken } from '../useRecognitionToken'
 
 // --- Hoisted mocks ---
 
-const mockUseReadContract = vi.hoisted(() => vi.fn())
+const mockPublicClient = vi.hoisted(() => ({
+  readContract: vi.fn(),
+}))
 const mockGetContractAddresses = vi.hoisted(() =>
   vi.fn(() => ({
     nft57b: '0xNFT' as `0x${string}`,
@@ -14,7 +16,7 @@ const mockGetContractAddresses = vi.hoisted(() =>
 )
 
 vi.mock('wagmi', () => ({
-  useReadContract: mockUseReadContract,
+  usePublicClient: () => mockPublicClient,
 }))
 
 vi.mock('../../config/contracts', async (importOriginal) => {
@@ -25,21 +27,13 @@ vi.mock('../../config/contracts', async (importOriginal) => {
   }
 })
 
+vi.mock('../../utils/ipfs', () => ({
+  resolveMetadata: vi.fn(),
+}))
+
 // --- Fixtures ---
 
 const MOCK_ADDRESS = '0x1111111111111111111111111111111111111111' as `0x${string}`
-
-function setupReadContractMock(responses: unknown[]) {
-  let callIndex = 0
-  mockUseReadContract.mockImplementation((config: { query?: { enabled?: boolean } }) => {
-    if (config?.query?.enabled === false) {
-      return { data: undefined, isFetching: false }
-    }
-    const resp = responses[Math.min(callIndex, responses.length - 1)]
-    callIndex++
-    return resp
-  })
-}
 
 describe('useRecognitionToken', () => {
   beforeEach(() => {
@@ -52,11 +46,10 @@ describe('useRecognitionToken', () => {
   })
 
   describe('no token', () => {
-    it('returns hasToken false when balanceOf returns 0', () => {
-      setupReadContractMock([
-        { data: 0n, isFetching: false },  // balanceOf
-      ])
+    it('returns hasToken false when balanceOf returns 0', async () => {
+      mockPublicClient.readContract.mockResolvedValue(0n)
       const { result } = renderHook(() => useRecognitionToken(MOCK_ADDRESS))
+      await act(async () => {})
       expect(result.current.hasToken).toBe(false)
       expect(result.current.tokenId).toBeNull()
       expect(result.current.tokenURI).toBeNull()
@@ -64,13 +57,14 @@ describe('useRecognitionToken', () => {
   })
 
   describe('has token', () => {
-    it('returns hasToken true with tokenId and tokenURI', () => {
-      setupReadContractMock([
-        { data: 1n, isFetching: false },       // balanceOf
-        { data: 42n, isFetching: false },       // tokenOfOwnerByIndex
-        { data: 'ipfs://token-uri', isFetching: false }, // tokenURI
-      ])
+    it('returns hasToken true with tokenId and tokenURI', async () => {
+      mockPublicClient.readContract
+        .mockResolvedValueOnce(1n)       // balanceOf
+        .mockResolvedValueOnce(42n)      // tokenOfOwnerByIndex
+        .mockResolvedValueOnce('ipfs://token-uri') // tokenURI
+
       const { result } = renderHook(() => useRecognitionToken(MOCK_ADDRESS))
+      await act(async () => {})
       expect(result.current.hasToken).toBe(true)
       expect(result.current.tokenId).toBe(42n)
       expect(result.current.tokenURI).toBe('ipfs://token-uri')
@@ -78,16 +72,14 @@ describe('useRecognitionToken', () => {
   })
 
   describe('no recognitionToken address', () => {
-    it('returns hasToken false when contract not configured', () => {
+    it('returns hasToken false when contract not configured', async () => {
       mockGetContractAddresses.mockReturnValue({
         nft57b: '0xNFT' as `0x${string}`,
         companyRegistry: '0xRegistry' as `0x${string}`,
         recognitionToken: undefined as unknown as `0x${string}`,
       })
-      setupReadContractMock([
-        { data: undefined, isFetching: false },
-      ])
       const { result } = renderHook(() => useRecognitionToken(MOCK_ADDRESS))
+      await act(async () => {})
       expect(result.current.hasToken).toBe(false)
     })
   })

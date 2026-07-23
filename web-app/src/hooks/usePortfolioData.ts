@@ -66,9 +66,10 @@ function extractEmployeeName(attributes: Record<string, unknown>[]): string | nu
  */
 export function usePortfolioData(
   address: `0x${string}` | undefined,
+  refetchTrigger = 0,
 ): PortfolioData {
-  const { nfts, isLoading: nftsLoading, error: nftsError } = useEmployeeNFTs(address)
-  const { hasToken, category: recognitionCategory, employeeName: recognitionEmployeeName, description: recognitionDescription, isLoading: recognitionLoading } = useRecognitionToken(address)
+  const { nfts, isLoading: nftsLoading, error: nftsError } = useEmployeeNFTs(address, refetchTrigger)
+  const { hasToken, category: recognitionCategory, employeeName: recognitionEmployeeName, description: recognitionDescription, isLoading: recognitionLoading } = useRecognitionToken(address, refetchTrigger)
 
   // Resolve metadata for each NFT57B in parallel
   const metadataResults = useQueries({
@@ -119,7 +120,6 @@ export function usePortfolioData(
   const categories = useMemo<CategoryGroup[]>(() => {
     const map = new Map<BadgeCategory, { count: number; hasClaimed: boolean }>()
     for (const nft of enrichedNfts) {
-      console.log('nft -', nft)
       if (nft.category) {
         const existing = map.get(nft.category) ?? { count: 0, hasClaimed: false }
         map.set(nft.category, {

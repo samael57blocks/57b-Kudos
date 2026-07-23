@@ -1,56 +1,60 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { EmployeePortfolio } from '../EmployeePortfolio'
-import type { EmployeeNFTData } from '../../hooks/useEmployeeNFTs'
 
 // --- Hoisted mocks ---
 
 const mockUseAccount = vi.hoisted(() => vi.fn())
-const mockUseEmployeeNFTs = vi.hoisted(() => vi.fn())
+const mockUsePortfolioData = vi.hoisted(() => vi.fn())
+const mockUseBonusReward = vi.hoisted(() => vi.fn())
 
 vi.mock('wagmi', () => ({
   useAccount: mockUseAccount,
 }))
 
-vi.mock('../../hooks/useEmployeeNFTs', () => ({
-  useEmployeeNFTs: mockUseEmployeeNFTs,
+vi.mock('../../hooks/usePortfolioData', () => ({
+  usePortfolioData: mockUsePortfolioData,
+}))
+
+vi.mock('../../hooks/useBonusReward', () => ({
+  useBonusReward: mockUseBonusReward,
 }))
 
 // Mock child components
-vi.mock('../../components/NFTGallery', () => ({
-  NFTGallery: ({
-    nfts,
+vi.mock('../../components/RecognitionGallery', () => ({
+  RecognitionGallery: ({
+    categories,
     onSelect,
   }: {
-    nfts: EmployeeNFTData[]
-    onSelect: (nft: EmployeeNFTData) => void
+    categories: { category: string; count: number; hasClaimed: boolean }[]
+    onSelect?: (category: string) => void
   }) => (
-    <div data-testid="nft-gallery">
-      {nfts.map((nft) => (
+    <div data-testid="recognition-gallery">
+      {categories.map((cat) => (
         <button
-          key={nft.tokenId.toString()}
-          data-testid={`nft-card-${nft.tokenId}`}
-          onClick={() => onSelect(nft)}
+          key={cat.category}
+          data-testid={`category-${cat.category}`}
+          onClick={() => onSelect?.(cat.category)}
         >
-          #{nft.tokenId.toString()}
+          {cat.category} ×{cat.count}
         </button>
       ))}
     </div>
   ),
 }))
 
-vi.mock('../../components/NFTDetail', () => ({
-  NFTDetail: ({
-    nft,
+vi.mock('../../components/RecognitionDetail', () => ({
+  RecognitionDetail: ({
+    category,
     isOpen,
     onClose,
   }: {
-    nft: EmployeeNFTData | null
+    category: string | null
     isOpen: boolean
     onClose: () => void
   }) => (
-    <div data-testid="nft-detail" data-open={isOpen}>
-      {nft && <span data-testid="detail-token-id">{nft.tokenId.toString()}</span>}
+    <div data-testid="recognition-detail" data-open={isOpen}>
+      {category && <span data-testid="detail-category">{category}</span>}
       <button data-testid="close-detail" onClick={onClose}>
         Close
       </button>
@@ -58,11 +62,39 @@ vi.mock('../../components/NFTDetail', () => ({
   ),
 }))
 
+vi.mock('../../components/RewardDetail', () => ({
+  RewardDetail: ({
+    isOpen,
+    onClose,
+  }: {
+    isOpen: boolean
+    onClose: () => void
+  }) => (
+    <div data-testid="reward-detail" data-open={isOpen}>
+      <button data-testid="close-reward" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  ),
+}))
+
+vi.mock('../../components/ProfileHeader', () => ({
+  ProfileHeader: ({ employeeName }: { employeeName: string | null }) => (
+    <div data-testid="profile-header">{employeeName}</div>
+  ),
+}))
+
+vi.mock('../../components/CircularBadge', () => ({
+  CircularBadge: ({ amount }: { amount: string }) => (
+    <div data-testid="circular-badge">{amount}</div>
+  ),
+}))
+
 // --- Fixtures ---
 
-const MOCK_NFTS: EmployeeNFTData[] = [
-  { tokenId: 1n, tokenURI: 'ipfs://QmOne', companyName: 'Alpha Corp' },
-  { tokenId: 2n, tokenURI: 'ipfs://QmTwo', companyName: 'Beta Inc' },
+const MOCK_CATEGORIES = [
+  { category: 'Innovation', count: 2, hasClaimed: false },
+  { category: 'Leadership', count: 1, hasClaimed: true },
 ]
 
 describe('EmployeePortfolio', () => {
@@ -72,19 +104,28 @@ describe('EmployeePortfolio', () => {
       address: '0xEmployee' as `0x${string}`,
       isConnected: true,
     })
-    mockUseEmployeeNFTs.mockReturnValue({
-      nfts: MOCK_NFTS,
+    mockUsePortfolioData.mockReturnValue({
+      nfts: [],
+      categories: MOCK_CATEGORIES,
+      employeeName: 'Alice Johnson',
+      totalRecognitions: 3,
       isLoading: false,
+      error: null,
+    })
+    mockUseBonusReward.mockReturnValue({
+      balance: 0n,
+      claimReward: vi.fn(),
+      isClaiming: false,
       error: null,
     })
   })
 
-  it('renders NFT gallery with employee NFTs', () => {
+  it('renders recognition gallery with categories', () => {
     render(<EmployeePortfolio />)
 
-    expect(screen.getByTestId('nft-gallery')).toBeInTheDocument()
-    expect(screen.getByText('#1')).toBeInTheDocument()
-    expect(screen.getByText('#2')).toBeInTheDocument()
+    expect(screen.getByTestId('recognition-gallery')).toBeInTheDocument()
+    expect(screen.getByText('Innovation ×2')).toBeInTheDocument()
+    expect(screen.getByText('Leadership ×1')).toBeInTheDocument()
   })
 
   it('shows connect message when wallet is not connected', () => {
@@ -98,7 +139,7 @@ describe('EmployeePortfolio', () => {
     expect(
       screen.getByText('Connect your wallet to view your portfolio'),
     ).toBeInTheDocument()
-    expect(screen.queryByTestId('nft-gallery')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('recognition-gallery')).not.toBeInTheDocument()
   })
 
   it('shows connect message when address is undefined', () => {
@@ -114,20 +155,20 @@ describe('EmployeePortfolio', () => {
     ).toBeInTheDocument()
   })
 
-  it('opens NFTDetail when an NFT is selected and closes on close', () => {
+  it('opens RecognitionDetail when a category is selected and closes on close', () => {
     render(<EmployeePortfolio />)
 
-    // Click on the first NFT
-    fireEvent.click(screen.getByTestId('nft-card-1'))
+    // Click on the first category
+    fireEvent.click(screen.getByTestId('category-Innovation'))
 
     // Detail should now be open
-    expect(screen.getByTestId('nft-detail')).toHaveAttribute('data-open', 'true')
-    expect(screen.getByTestId('detail-token-id')).toHaveTextContent('1')
+    expect(screen.getByTestId('recognition-detail')).toHaveAttribute('data-open', 'true')
+    expect(screen.getByTestId('detail-category')).toHaveTextContent('Innovation')
 
     // Close the detail
     fireEvent.click(screen.getByTestId('close-detail'))
 
     // Detail should be closed
-    expect(screen.getByTestId('nft-detail')).toHaveAttribute('data-open', 'false')
+    expect(screen.getByTestId('recognition-detail')).toHaveAttribute('data-open', 'false')
   })
 })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useAccount } from 'wagmi'
 import { formatEther } from 'viem'
 import { ProfileHeader } from '../components/ProfileHeader'
@@ -23,6 +23,7 @@ import styles from './EmployeePortfolio.module.css'
  */
 export function EmployeePortfolio() {
   const { address, isConnected } = useAccount()
+  const [refetchTrigger, setRefetchTrigger] = useState(0)
   const {
     nfts,
     categories,
@@ -30,12 +31,17 @@ export function EmployeePortfolio() {
     totalRecognitions,
     isLoading,
     error,
-  } = usePortfolioData(address)
-  const { balance, claimReward, isClaiming } = useBonusReward(address)
+  } = usePortfolioData(address, refetchTrigger)
+  const { balance, claimReward, isClaiming } = useBonusReward(address, refetchTrigger)
 
   // Modal states
   const [selectedCategory, setSelectedCategory] = useState<BadgeCategory | null>(null)
   const [showRewardDetail, setShowRewardDetail] = useState(false)
+
+  // Refetch all data after a successful claim
+  const handleClaimSuccess = useCallback(() => {
+    setRefetchTrigger((prev) => prev + 1)
+  }, [])
 
   // Find NFT data for the selected category
   // Prefer unclaimed NFT57B (for claim flow), fallback to claimed RecognitionToken
@@ -110,6 +116,7 @@ export function EmployeePortfolio() {
         isOpen={!!selectedCategory}
         onClose={() => setSelectedCategory(null)}
         isClaimed={isClaimed}
+        onClaimSuccess={handleClaimSuccess}
       />
 
       {/* BonusReward Detail Modal */}

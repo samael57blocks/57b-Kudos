@@ -1,4 +1,4 @@
-import { useReadContract } from 'wagmi'
+import { usePublicClient } from 'wagmi'
 import { useEffect, useState } from 'react'
 import { RECOGNITION_TOKEN_ABI, getContractAddresses } from '../config/contracts'
 import { resolveMetadata } from '../utils/ipfs'
@@ -50,58 +50,29 @@ function extractEmployeeName(attributes: Record<string, unknown>[]): string | nu
  *
  * Sequential reads: balanceOf → tokenOfOwnerByIndex(0) → tokenURI
  * Then resolves metadata to extract category, employeeName, description.
+ *
+ * Refetches when `refetchTrigger` changes (e.g. after a claim).
  */
 export function useRecognitionToken(
   address: `0x${string}` | undefined,
+  refetchTrigger = 0,
 ): UseRecognitionTokenResult {
+  const publicClient = usePublicClient()
   const contracts = getContractAddresses()
 
-  // Step 1: balanceOf
-  const { data: balance, isFetching: balanceLoading } = useReadContract({
-    address: contracts?.recognitionToken,
-    abi: RECOGNITION_TOKEN_ABI,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!contracts?.recognitionToken && !!address,
-      staleTime: 30_000,
-    },
-  })
-
-  const hasToken = (balance ?? 0n) > 0n
-
-  // Step 2: tokenOfOwnerByIndex (only if hasToken)
-  const { data: tokenId, isFetching: tokenIdLoading } = useReadContract({
-    address: contracts?.recognitionToken,
-    abi: RECOGNITION_TOKEN_ABI,
-    functionName: 'tokenOfOwnerByIndex',
-    args: address && hasToken ? [address, 0n] : undefined,
-    query: {
-      enabled: hasToken,
-      staleTime: 30_000,
-    },
-  })
-
-  // Step 3: tokenURI (only if tokenId resolved)
-  const { data: tokenUriData, isFetching: uriLoading } = useReadContract({
-    address: contracts?.recognitionToken,
-    abi: RECOGNITION_TOKEN_ABI,
-    functionName: 'tokenURI',
-    args: tokenId !== undefined ? [tokenId!] : undefined,
-    query: {
-      enabled: tokenId !== undefined && tokenId !== null,
-      staleTime: 30_000,
-    },
-  })
-
-  // Step 4: Resolve metadata from tokenURI
+  const [hasToken, setHasToken] = useState(false)
+  const [tokenId, setTokenId] = useState<bigint | null>(null)
+  const [tokenURI, setTokenURI] = useState<string | null>(null)
   const [category, setCategory] = useState<BadgeCategory | null>(null)
   const [employeeName, setEmployeeName] = useState<string | null>(null)
   const [description, setDescription] = useState<string | null>(null)
-  const [metaLoading, setMetaLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (!tokenUriData) {
+    if (!address || !publicClient || !contracts?.recognitionToken) {
+      setHasToken(false)
+      setTokenId(null)
+      setTokenURI(null)
       setCategory(null)
       setEmployeeName(null)
       setDescription(null)
@@ -110,39 +81,96 @@ export function useRecognitionToken(
 
     let cancelled = false
 
-    const fetchMetadata = async () => {
-      setMetaLoading(true)
+    const fetchToken = async () => {
+      setIsLoading(true)
+
       try {
-        const meta = await resolveMetadata(tokenUriData)
+        // Step 1: balanceOf
+        const balance = (await publicClient.readContract({
+          address: contracts.recognitionToken,
+          abi: RECOGNITION_TOKEN_ABI,
+          functionName: 'balanceOf',
+          args: [address],
+        })) as bigint
+
         if (cancelled) return
 
-        const attributes = (meta?.attributes as Record<string, unknown>[]) ?? []
-        setCategory(extractCategory(attributes))
-        setEmployeeName(extractEmployeeName(attributes))
-        setDescription((meta?.description as string) ?? null)
+        if (balance === 0n) {
+          setHasToken(false)
+          setTokenId(null)
+          setTokenURI(null)
+          setCategory(null)
+          setEmployeeName(null)
+          setDescription(null)
+          return
+        }
+
+        setHasToken(true)
+
+        // Step 2: tokenOfOwnerByIndex(0)
+        const id = (await publicClient.readContract({
+          address: contracts.recognitionToken,
+          abi: RECOGNITION_TOKEN_ABI,
+          functionName: 'tokenOfOwnerByIndex',
+          args: [address, 0n],
+        })) as bigint
+
+        if (cancelled) return
+        setTokenId(id)
+
+        // Step 3: tokenURI
+        const uri = (await publicClient.readContract({
+          address: contracts.recognitionToken,
+          abi: RECOGNITION_TOKEN_ABI,
+          functionName: 'tokenURI',
+          args: [id],
+        })) as string
+
+        if (cancelled) return
+        setTokenURI(uri)
+
+        // Step 4: Resolve metadata
+        try {
+          const meta = await resolveMetadata(uri)
+          if (cancelled) return
+
+          const attributes = (meta?.attributes as Record<string, unknown>[]) ?? []
+          setCategory(extractCategory(attributes))
+          setEmployeeName(extractEmployeeName(attributes))
+          setDescription((meta?.description as string) ?? null)
+        } catch {
+          if (!cancelled) {
+            setCategory(null)
+            setEmployeeName(null)
+            setDescription(null)
+          }
+        }
       } catch {
         if (!cancelled) {
+          setHasToken(false)
+          setTokenId(null)
+          setTokenURI(null)
           setCategory(null)
           setEmployeeName(null)
           setDescription(null)
         }
       } finally {
-        if (!cancelled) setMetaLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
 
-    fetchMetadata()
+    fetchToken()
 
     return () => { cancelled = true }
-  }, [tokenUriData])
+  }, [address, publicClient, contracts?.recognitionToken, refetchTrigger])
 
   return {
     hasToken,
-    tokenId: tokenId ?? null,
-    tokenURI: tokenUriData ?? null,
+    tokenId,
+    tokenURI,
     category,
     employeeName,
     description,
-    isLoading: balanceLoading || tokenIdLoading || uriLoading || metaLoading,
+    isLoading,
   }
 }

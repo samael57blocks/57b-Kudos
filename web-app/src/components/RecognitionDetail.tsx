@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Dialog } from './Dialog'
 import { BADGE_CONFIG, type BadgeCategory } from '../lib/recognition-data'
 import styles from './RecognitionDetail.module.css'
@@ -14,6 +15,7 @@ interface RecognitionDetailProps {
   isOpen: boolean
   onClose: () => void
   isClaimed?: boolean
+  onClaimSuccess?: () => void
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -34,8 +36,16 @@ export function RecognitionDetail({
   isOpen,
   onClose,
   isClaimed = false,
+  onClaimSuccess,
 }: RecognitionDetailProps) {
   const { claim, step, error, reset } = useClaimNFT(tokenId ?? 0n)
+
+  // Notify parent when claim succeeds so it can refetch portfolio data
+  useEffect(() => {
+    if (step === 'success') {
+      onClaimSuccess?.()
+    }
+  }, [step, onClaimSuccess])
 
   if (!category) return null
 
