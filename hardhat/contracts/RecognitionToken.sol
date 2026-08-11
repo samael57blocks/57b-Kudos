@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./IReward.sol";
+import "./interfaces/IReward.sol";
 
 /// @notice Revert when a caller tries to claim (burn) a permanent recognition token
 error PermanentToken(uint256 tokenId);

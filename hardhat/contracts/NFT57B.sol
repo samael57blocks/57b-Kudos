@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "./ICompanyRegistry.sol";
+import "./interfaces/ICompanyRegistry.sol";
 
 /// @notice Emitted when a non-admin tries to transfer an NFT57B token between non-zero addresses
 error TransferNotAllowed(uint256 tokenId, address from, address to);

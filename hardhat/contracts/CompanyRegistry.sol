@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./INFT57B.sol";
-import "./IReward.sol";
-import "./ICompanyRegistry.sol";
+import "./interfaces/INFT57B.sol";
+import "./interfaces/IReward.sol";
+import "./interfaces/ICompanyRegistry.sol";
 
 /// @title CompanyRegistry — 57Blocks Kudos Company Registration
 /// @notice Manages company registration, employee assignments,
