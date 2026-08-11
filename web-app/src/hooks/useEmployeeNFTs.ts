@@ -36,6 +36,7 @@ const MAX_TOKENS = 50
  */
 export function useEmployeeNFTs(
   address: `0x${string}` | undefined,
+  refetchTrigger = 0,
 ): UseEmployeeNFTsResult {
   const publicClient = usePublicClient()
   const [nfts, setNfts] = useState<EmployeeNFTData[]>([])
@@ -204,7 +205,7 @@ export function useEmployeeNFTs(
     return () => {
       cancelled = true
     }
-  }, [address, publicClient])
+  }, [address, publicClient, refetchTrigger])
 
   return { nfts, isLoading, error }
 }

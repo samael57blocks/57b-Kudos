@@ -1,19 +1,17 @@
 .dialog {
   width: 500px;
-  height: 70vh;
   border-radius: 15px;
   overflow: hidden;
   background: #fff;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
 }
 
 /* ── Header ────────────────────────────────────────────────────────────── */
 
 .header {
   position: relative;
-  background: var(--category-color, #3B82F6);
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   padding: 32px 24px 40px;
   display: flex;
   flex-direction: column;
@@ -46,146 +44,106 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
-.badgeWrapper {
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
+.coinIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #fff;
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
 }
 
-.categoryName {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
-  text-transform: uppercase;
-  margin-top: 10px;
-  text-align: center;
-  letter-spacing: 0.15em;
-}
-
-.categoryTitle {
-  font-size: 16px;
+.title {
+  font-size: 18px;
   font-weight: 700;
   color: #fff;
   margin: 0;
-  text-align: center;
-  font-style: italic;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
 }
 
 /* ── Body ──────────────────────────────────────────────────────────────── */
 
 .body {
   padding: 24px;
-  background: #fff;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-.profile {
+.balanceSection {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
+  padding: 16px;
+  background: #fffbeb;
+  border-radius: 12px;
+  border: 1px solid #fef3c7;
 }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #3b3b3b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.balanceLabel {
+  font-size: 12px;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.initials {
-  color: #fff;
-  font-size: 14px;
+.balanceValue {
+  font-size: 28px;
   font-weight: 700;
-  line-height: 1;
-  user-select: none;
-}
-
-.name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-h, #08060d);
+  color: #92400e;
 }
 
 .description {
   font-size: 14px;
-  color: var(--text, #6b6375);
-  font-style: italic;
-  line-height: 1.6;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.5;
   margin: 0;
-  padding-left: 16px;
-  border-left: 3px solid var(--category-color, #3B82F6);
 }
 
 /* ── Footer ────────────────────────────────────────────────────────────── */
 
 .footer {
   padding: 16px 24px 24px;
-  background: #fff;
   display: flex;
   justify-content: center;
 }
 
 .claimButton {
-  width: 50%;
+  width: 100%;
   padding: 12px 24px;
   border: none;
   border-radius: 10px;
-  background: var(--category-color, #3B82F6);
+  background: #f59e0b;
   color: #fff;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  transition: background 0.15s, transform 0.1s;
 }
 
-.claimButton:hover {
-  opacity: 0.9;
+.claimButton:hover:not(:disabled) {
+  background: #d97706;
 }
 
-.claimButton:active {
+.claimButton:active:not(:disabled) {
   transform: scale(0.98);
 }
 
 .claimButton:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
-}
-
-/* ── Claimed status ────────────────────────────────────────────────────── */
-
-.claimedStatus {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: rgba(16, 185, 129, 0.1);
-  border-radius: 10px;
-  border: 1px solid rgba(16, 185, 129, 0.2);
-}
-
-.claimedIcon {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #10b981;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.claimedText {
-  font-size: 14px;
-  font-weight: 600;
-  color: #10b981;
 }

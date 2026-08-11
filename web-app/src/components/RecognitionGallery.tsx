@@ -22,6 +22,7 @@ function SkeletonBadge() {
 /**
  * Displays recognition categories as a HexBadge grid.
  * Each badge shows the category icon and name with a count.
+ * Badges with claimed RecognitionTokens show a ✓ indicator.
  */
 export function RecognitionGallery({ categories, isLoading, onSelect }: RecognitionGalleryProps) {
   if (isLoading) {
@@ -55,18 +56,28 @@ export function RecognitionGallery({ categories, isLoading, onSelect }: Recognit
     <div className={styles.section}>
       <h2 className={styles.title}>Recognition Portfolio</h2>
       <div className={styles.grid}>
-        {categories.map(({ category, count }) => (
+        {categories.map(({ category, count, hasClaimed }) => (
           <button
             key={category}
             type="button"
             className={styles.badgeItem}
             onClick={() => onSelect?.(category)}
           >
-            <Badge category={category}/>
+            <div className={styles.badgeWrapper}>
+              <Badge category={category}/>
+              {hasClaimed && (
+                <span className={styles.claimedBadge}>✓</span>
+              )}
+            </div>
             <span className={styles.categoryName}>{category}</span>
-            {count > 1 && (
-              <span className={styles.badgeCount}>×{count}</span>
-            )}
+            <div className={styles.badgeMeta}>
+              {count > 1 && (
+                <span className={styles.badgeCount}>×{count}</span>
+              )}
+              {hasClaimed && (
+                <span className={styles.claimedLabel}>Claimed</span>
+              )}
+            </div>
           </button>
         ))}
       </div>
