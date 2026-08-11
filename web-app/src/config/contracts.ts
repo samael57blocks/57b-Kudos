@@ -11,6 +11,7 @@ export interface ContractAddresses {
   nft57b: `0x${string}`
   companyRegistry: `0x${string}`
   recognitionToken?: `0x${string}`
+  bonusReward?: `0x${string}`
 }
 
 /**
@@ -25,12 +26,15 @@ export function getContractAddresses(): ContractAddresses | null {
 
   const envRecognitionToken = import.meta.env
     .VITE_RECOGNITION_TOKEN_ADDRESS as `0x${string}` | undefined
+  const envBonusReward = import.meta.env
+    .VITE_BONUS_REWARD_ADDRESS as `0x${string}` | undefined
 
   if (envNFT && envRegistry) {
     return {
       nft57b: envNFT,
       companyRegistry: envRegistry,
       ...(envRecognitionToken ? { recognitionToken: envRecognitionToken } : {}),
+      ...(envBonusReward ? { bonusReward: envBonusReward } : {}),
     }
   }
 
@@ -49,11 +53,13 @@ export const NFT57B_ABI = parseAbi([
   'function supportsInterface(bytes4 interfaceId) external view returns (bool)',
   // Write
   'function burn(uint256 tokenId) external',
+  'function claim(uint256 tokenId) external',
   // AccessControl
   'function hasRole(bytes32 role, address account) external view returns (bool)',
   'function DEFAULT_ADMIN_ROLE() external pure returns (bytes32)',
   // Events
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
+  'event ClaimInitiated(address indexed employee, uint256 indexed tokenId, string uri)',
 ])
 
 export const COMPANY_REGISTRY_ABI = parseAbi([
@@ -84,8 +90,17 @@ export const COMPANY_REGISTRY_ABI = parseAbi([
 ])
 
 export const RECOGNITION_TOKEN_ABI = parseAbi([
+  'function balanceOf(address owner) external view returns (uint256)',
+  'function ownerOf(uint256 tokenId) external view returns (address)',
+  'function tokenURI(uint256 tokenId) external view returns (string)',
   'function hasRole(bytes32 role, address account) external view returns (bool)',
   'function grantRole(bytes32 role, address account) external',
   'function revokeRole(bytes32 role, address account) external',
   'function MINTER_ROLE() external pure returns (bytes32)',
+])
+
+export const BONUS_REWARD_ABI = parseAbi([
+  'function balanceOf(address account) external view returns (uint256)',
+  'function claimReward() external',
+  'event RewardClaimed(address indexed claimer, uint256 amount)',
 ])

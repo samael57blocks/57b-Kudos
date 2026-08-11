@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useAccount } from 'wagmi'
+import { formatEther } from 'viem'
 import { ProfileHeader } from '../components/ProfileHeader'
 import { RecognitionGallery } from '../components/RecognitionGallery'
 import { RecognitionDetail } from '../components/RecognitionDetail'
+import { CircularBadge } from '../components/CircularBadge'
+import { RewardDetail } from '../components/RewardDetail'
 import { usePortfolioData } from '../hooks/usePortfolioData'
+import { useBonusReward } from '../hooks/useBonusReward'
 import type { BadgeCategory } from '../lib/recognition-data'
 import styles from './EmployeePortfolio.module.css'
 
@@ -13,10 +17,13 @@ import styles from './EmployeePortfolio.module.css'
  * Layout:
  * - Profile header with avatar, name, and recognition count
  * - Recognition Portfolio grid with category HexBadges
- * - RecognitionDetail modal when a badge is clicked
+ *   - NFT57B (unclaimed): click → RecognitionDetail with Claim button
+ *   - RecognitionToken (claimed): click → RecognitionDetail with "Already Claimed"
+ * - Rewards section (if has BonusReward balance) — CircularBadge
  */
 export function EmployeePortfolio() {
   const { address, isConnected } = useAccount()
+  const [refetchTrigger, setRefetchTrigger] = useState(0)
   const {
     nfts,
     categories,
@@ -24,13 +31,26 @@ export function EmployeePortfolio() {
     totalRecognitions,
     isLoading,
     error,
-  } = usePortfolioData(address)
-  const [selectedCategory, setSelectedCategory] = useState<BadgeCategory | null>(null)
+  } = usePortfolioData(address, refetchTrigger)
+  const { balance, claimReward, isClaiming } = useBonusReward(address, refetchTrigger)
 
-  // Find the first NFT matching the selected category for description
+  // Modal states
+  const [selectedCategory, setSelectedCategory] = useState<BadgeCategory | null>(null)
+  const [showRewardDetail, setShowRewardDetail] = useState(false)
+
+  // Refetch all data after a successful claim
+  const handleClaimSuccess = useCallback(() => {
+    setRefetchTrigger((prev) => prev + 1)
+  }, [])
+
+  // Find NFT data for the selected category
+  // Prefer unclaimed NFT57B (for claim flow), fallback to claimed RecognitionToken
   const selectedNft = selectedCategory
-    ? nfts.find((nft) => nft.category === selectedCategory)
+    ? nfts.find((nft) => nft.category === selectedCategory && !nft.isClaimed)
+      ?? nfts.find((nft) => nft.category === selectedCategory)
     : null
+
+  const isClaimed = selectedNft?.isClaimed ?? false
 
   if (!isConnected || !address) {
     return (
@@ -52,12 +72,32 @@ export function EmployeePortfolio() {
         totalRecognitions={totalRecognitions}
       />
 
-      {/* Recognition Portfolio */}
+      {/* Recognition Portfolio — NFT57B + RecognitionToken */}
       <RecognitionGallery
         categories={categories}
         isLoading={isLoading}
         onSelect={setSelectedCategory}
       />
+
+      {/* Rewards Section — BonusReward only */}
+      {balance > 0n && (
+        <div className={styles.rewards}>
+          <h3 className={styles.sectionTitle}>Rewards</h3>
+          <div
+            className={styles.badgeClickable}
+            onClick={() => setShowRewardDetail(true)}
+            onKeyDown={(e) => e.key === 'Enter' && setShowRewardDetail(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <CircularBadge amount={formatEther(balance)} size="lg" />
+            <div className={styles.badgeInfo}>
+              <span className={styles.badgeCategoryName}>Bonus Reward</span>
+              <span className={styles.badgeSubtitle}>{formatEther(balance)} 57BB</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error state */}
       {error && (
@@ -67,13 +107,25 @@ export function EmployeePortfolio() {
         </div>
       )}
 
-      {/* Recognition Detail Modal */}
+      {/* Recognition Detail Modal — Works for both NFT57B and RecognitionToken */}
       <RecognitionDetail
         category={selectedCategory}
         employeeName={employeeName}
         description={selectedNft?.description ?? null}
+        tokenId={isClaimed ? null : (selectedNft?.tokenId ?? null)}
         isOpen={!!selectedCategory}
         onClose={() => setSelectedCategory(null)}
+        isClaimed={isClaimed}
+        onClaimSuccess={handleClaimSuccess}
+      />
+
+      {/* BonusReward Detail Modal */}
+      <RewardDetail
+        balance={formatEther(balance)}
+        isOpen={showRewardDetail}
+        onClose={() => setShowRewardDetail(false)}
+        onClaim={claimReward}
+        isClaiming={isClaiming}
       />
     </div>
   )

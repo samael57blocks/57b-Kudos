@@ -78,7 +78,7 @@ describe("NFT57B", function () {
     );
 
     // Register employee via admin
-    await registry.write.registerEmployee([employee.account.address, 0n], {
+    await registry.write.registerEmployee([employee.account.address, 0n, ""], {
       account: minter.account,
     });
 
