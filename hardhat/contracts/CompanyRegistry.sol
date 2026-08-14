@@ -37,8 +37,16 @@ contract CompanyRegistry is AccessControl {
         string name
     );
 
+    /// @notice Emitted when a deployed Company updates its own reward amount
+    event CompanyRewardAmountUpdated(address indexed company, uint256 amount);
+
     /// @notice Revert when trying to operate on a company that does not exist
     error CompanyNotFound(uint256 companyId);
+
+    /// @notice Revert when a caller that is not a factory-deployed Company
+    ///         tries to use Company-only functions (recordEmployee,
+    ///         removeEmployeeRecord, setCompanyRewardAmount)
+    error NotCompany(address caller);
 
     /// @notice Revert when querying an employee that is not mapped to any company
     error EmployeeNotRegistered(address employee);
@@ -117,7 +125,10 @@ contract CompanyRegistry is AccessControl {
     /// @notice Check whether an address is a factory-deployed Company
     /// @param addr The address to check
     /// @return true iff addr was returned by registerCompany (companyId != 0)
-    function isCompany(address addr) external view returns (bool) {
+    /// @dev public (not external) so factory functions can call it internally
+    ///      as a gate — solc only permits internal-call syntax for public/internal
+    ///      functions. ABI is identical for external callers.
+    function isCompany(address addr) public view returns (bool) {
         return _companyIdByAddress[addr] != 0;
     }
 
@@ -157,5 +168,63 @@ contract CompanyRegistry is AccessControl {
             revert EmployeeNotRegistered(employee);
         }
         return company;
+    }
+
+    /// @notice Map an employee to the calling Company — claim-routing index only
+    /// @param employee The employee address to route to msg.sender
+    /// @dev Only a factory-deployed Company may map employees (NotCompany).
+    ///      This is NOT an employee-management system: the factory merely
+    ///      maintains a routing index (employee → Company address) consumed by
+    ///      onClaimed (T1.4). The Company is the source of truth for its own
+    ///      employee records and calls this as a side effect of its own
+    ///      employee management. Idempotent: if the employee is already mapped
+    ///      (sentinel check, address(0) = unmapped), the existing mapping is
+    ///      NOT rewritten and the call does NOT revert — a no-op.
+    function recordEmployee(address employee) external {
+        if (!isCompany(msg.sender)) {
+            revert NotCompany(msg.sender);
+        }
+        if (_companyByEmployee[employee] != address(0)) {
+            return; // idempotent: keep the existing mapping, no-op
+        }
+        _companyByEmployee[employee] = msg.sender;
+    }
+
+    /// @notice Remove the calling Company's mapping for an employee
+    /// @param employee The employee address to unmap
+    /// @dev Only a factory-deployed Company may call (NotCompany). Idempotent:
+    ///      only deletes when the mapping points at msg.sender — a Company can
+    ///      NEVER delete another Company's mapping; unrelated/absent entries
+    ///      are a no-op. The Company drives this from its own removeEmployee.
+    function removeEmployeeRecord(address employee) external {
+        if (!isCompany(msg.sender)) {
+            revert NotCompany(msg.sender);
+        }
+        if (_companyByEmployee[employee] == msg.sender) {
+            delete _companyByEmployee[employee];
+        }
+    }
+
+    /// @notice Set the calling Company's own reward amount
+    /// @param amount The new per-company reward amount used by onClaimed (T1.4)
+    /// @dev Only the deployed Company itself may set its reward amount
+    ///      (NotCompany) — the factory never edits a Company's value. Emits
+    ///      CompanyRewardAmountUpdated. Per-company value; does NOT touch the
+    ///      platform seed knob or other companies.
+    function setCompanyRewardAmount(uint256 amount) external {
+        if (!isCompany(msg.sender)) {
+            revert NotCompany(msg.sender);
+        }
+        _companyRewardAmount[msg.sender] = amount;
+        emit CompanyRewardAmountUpdated(msg.sender, amount);
+    }
+
+    /// @notice Platform seed knob for the default reward amount
+    /// @param amount The new default bootstrapped into FUTURE registrations
+    /// @dev Only DEFAULT_ADMIN_ROLE may update the platform knob. It seeds
+    ///      _companyRewardAmount only for companies registered AFTER this call;
+    ///      per-company values already set are NOT retroactively changed.
+    function setRewardAmount(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _defaultRewardAmount = amount;
     }
 }
