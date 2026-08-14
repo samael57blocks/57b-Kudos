@@ -113,7 +113,7 @@ contract CompanyRegistry is AccessControl, ReentrancyGuard {
             revert InvalidAdminWallet();
         }
 
-        Company newCompany = new Company(name, adminWallet, nft57b);
+        Company newCompany = new Company(name, adminWallet, address(nft57b));
         address companyAddress = address(newCompany);
 
         _companies.push(newCompany);
