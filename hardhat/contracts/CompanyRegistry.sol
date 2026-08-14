@@ -16,7 +16,7 @@ import "./Company.sol";
 /// @dev AccessControl-inherited DEFAULT_ADMIN_ROLE gates all factory admin ops
 ///      (registerCompany, platform rewardAmount knob, etc.). Reward addresses
 ///      are pinned at construction time — no post-deploy reward wiring.
-contract CompanyRegistry is AccessControl {
+contract CompanyRegistry is AccessControl, ReentrancyGuard {
     /// @notice The NFT57B contract that mints Kudos tokens (immutable)
     INFT57B public immutable nft57b;
 
@@ -53,6 +53,14 @@ contract CompanyRegistry is AccessControl {
 
     /// @notice Revert when registering a company with a zero admin wallet
     error InvalidAdminWallet();
+
+    /// @notice Revert when onClaimed is called by anyone other than the
+    ///         factory's immutable NFT57B contract
+    error NotNFT57B(address caller);
+
+    /// @notice Revert when onClaimed runs with a zero reward contract address
+    ///         (defense-in-depth on the construction-pinned immutables)
+    error RewardContractsNotSet();
 
     /// @notice All deployed companies in registration order. The 1-based
     ///         registration id of a company is its index here + 1.
@@ -168,6 +176,51 @@ contract CompanyRegistry is AccessControl {
             revert EmployeeNotRegistered(employee);
         }
         return company;
+    }
+
+    /// @notice Claim entry point called by NFT57B after a token is claimed (burned)
+    /// @param employee The employee address that claimed the token
+    /// @param uri The metadata URI of the claimed token, forwarded to both rewards
+    /// @dev Only the factory's immutable NFT57B may call (inline msg.sender
+    ///      gate — reverts NotNFT57B). The claim is EXACTLY 2 hops —
+    ///      NFT57B.claim → this function — with the factory minting
+    ///      BonusReward + RecognitionToken DIRECTLY: NO Company involvement.
+    ///      The employee's Company is resolved via the internal routing index
+    ///      (EmployeeNotRegistered if unmapped) and its per-company reward
+    ///      amount is minted as BonusReward; RecognitionToken is minted with
+    ///      amount 0 (token id auto-increments). Reverts RewardContractsNotSet
+    ///      if either immutable reward address is zero (defense-in-depth on
+    ///      construction inputs). nonReentrant guards the cross-contract
+    ///      reward mints. The tokenId parameter exists only to satisfy the
+    ///      ICompanyRegistry.onClaimed callback signature and is unused in
+    ///      the 2-hop direct path (the rewards' emitReward mints by
+    ///      employee/amount/uri).
+    function onClaimed(
+        address employee,
+        uint256 /* tokenId */, // callback signature only — unused in the 2-hop direct path
+        string calldata uri
+    ) external nonReentrant {
+        // Inline onlyNFT57B gate (no modifier): the factory mints on behalf
+        // of its immutable NFT57B and no other caller
+        if (msg.sender != address(nft57b)) {
+            revert NotNFT57B(msg.sender);
+        }
+
+        // Resolve the employee's Company via the claim-routing index
+        address company = _companyByEmployee[employee];
+        if (company == address(0)) {
+            revert EmployeeNotRegistered(employee);
+        }
+
+        // Defense-in-depth on the construction-pinned immutables
+        if (address(bonusReward) == address(0) || address(recognitionToken) == address(0)) {
+            revert RewardContractsNotSet();
+        }
+
+        // Exactly 2 hops: mint the employee's per-company BonusReward amount,
+        // then the RecognitionToken badge — no Company call in the chain
+        IReward(bonusReward).emitReward(employee, _companyRewardAmount[company], uri);
+        IReward(recognitionToken).emitReward(employee, 0, uri);
     }
 
     /// @notice Map an employee to the calling Company — claim-routing index only
