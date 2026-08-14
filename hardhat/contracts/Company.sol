@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./interfaces/INFT57B.sol";
+import "./interfaces/ICompanyRegistry.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @title Company — 57Blocks Kudos Company
@@ -108,6 +109,9 @@ contract Company is AccessControl {
     /// @param _name The employee's display name
     /// @dev Only DEFAULT_ADMIN_ROLE (the company admin) can register employees.
     ///      Reverts with EmployeeAlreadyRegistered if the employee is already active.
+    ///      Follows Checks-Effects-Interactions: local write + EmployeeRegistered
+    ///      emit first, then the factory's employee → company routing index is
+    ///      synced via ICompanyRegistry(factory).recordEmployee in the same tx.
     function registerEmployee(address _employeeAddress, string calldata _name) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_employees[_employeeAddress].isActive) {
             revert EmployeeAlreadyRegistered(_employeeAddress);
@@ -119,16 +123,24 @@ contract Company is AccessControl {
             createdAt: block.timestamp
         });
         emit EmployeeRegistered(_employeeAddress, _name);
+        ICompanyRegistry(factory).recordEmployee(_employeeAddress);
     }
 
-    /// @notice Remove an employee from their company
+    /// @notice Remove an employee from their company (admin-only)
     /// @param _employeeAddress The employee address to remove
-    /// @dev Only DEFAULT_ADMIN_ROLE or the company admin. Reverts if not registered.
-    function removeEmployee(address _employeeAddress) external {
-        require(_employees[_employeeAddress].isActive, "The Employee is not active");
+    /// @dev Only DEFAULT_ADMIN_ROLE (the company admin) can remove employees.
+    ///      Reverts with EmployeeNotRegistered if the employee is not active.
+    ///      Follows Checks-Effects-Interactions: local write + EmployeeRemoved
+    ///      emit first, then the factory's employee → company routing index is
+    ///      synced via ICompanyRegistry(factory).removeEmployeeRecord in the same tx.
+    function removeEmployee(address _employeeAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!_employees[_employeeAddress].isActive) {
+            revert EmployeeNotRegistered(_employeeAddress);
+        }
 
         _employees[_employeeAddress].isActive = false;
         emit EmployeeRemoved(_employeeAddress);
+        ICompanyRegistry(factory).removeEmployeeRecord(_employeeAddress);
     }
 
     /// @notice Get the display name of an employee
@@ -138,12 +150,17 @@ contract Company is AccessControl {
         return _employees[_employeeAddress].name;
     }
 
-    /// @notice Update an employee's display name
+    /// @notice Update an employee's display name (admin-only)
     /// @param _employeeAddress The employee address
     /// @param _name The new display name
-    /// @dev Only DEFAULT_ADMIN_ROLE or the company admin can update.
-    function updateEmployeeName(address _employeeAddress, string calldata _name) external {
-        require(_employees[_employeeAddress].isActive, "The Employee is not active");
+    /// @dev Only DEFAULT_ADMIN_ROLE (the company admin) can update employee names.
+    ///      Reverts with EmployeeNotRegistered if the employee is not active.
+    ///      No factory sync needed: the employee stays in the same company and
+    ///      the routing index is unchanged.
+    function updateEmployeeName(address _employeeAddress, string calldata _name) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!_employees[_employeeAddress].isActive) {
+            revert EmployeeNotRegistered(_employeeAddress);
+        }
 
         _employees[_employeeAddress].name = _name;
     }
