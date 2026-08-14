@@ -76,4 +76,10 @@ interface ICompanyRegistry {
     /// @param amount The new per-company reward amount used on claims
     /// @dev Only the deployed Company itself may call
     function setCompanyRewardAmount(uint256 amount) external;
+
+    /// @notice Get a company's per-claim BonusReward amount
+    /// @param company The Company address
+    /// @return The configured reward amount (0 for non-companies)
+    /// @dev Read by the deployed Companies as the rewardAmount() delegate
+    function companyRewardAmount(address company) external view returns (uint256);
 }

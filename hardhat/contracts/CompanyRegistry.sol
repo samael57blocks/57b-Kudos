@@ -272,6 +272,16 @@ contract CompanyRegistry is AccessControl, ReentrancyGuard {
         emit CompanyRewardAmountUpdated(msg.sender, amount);
     }
 
+    /// @notice Get a company's per-claim BonusReward amount
+    /// @param company The Company address
+    /// @return The configured reward amount
+    /// @dev Simple view on the internal per-company reward mapping (spec C1.10).
+    ///      No gate and no revert: 0 for non-companies is acceptable — deployed
+    ///      Companies read it with address(this).
+    function companyRewardAmount(address company) external view returns (uint256) {
+        return _companyRewardAmount[company];
+    }
+
     /// @notice Platform seed knob for the default reward amount
     /// @param amount The new default bootstrapped into FUTURE registrations
     /// @dev Only DEFAULT_ADMIN_ROLE may update the platform knob. It seeds

@@ -64,9 +64,6 @@ contract Company is AccessControl {
     /// @notice Emitted when MINTER_ROLE is revoked from an employee
     event MinterRoleRevoked(address indexed employee);
 
-    /// @notice Amount of BonusReward tokens minted per claim
-    uint256 public rewardAmount;
-
     /// @notice employee address → Employee record
     mapping(address => Employee) private _employees;
 
@@ -173,11 +170,24 @@ contract Company is AccessControl {
         return tokenId;
     }
 
-    /// @notice Set the amount of BonusReward tokens minted per claim
+    /// @notice Get this Company's per-claim BonusReward amount
+    /// @return The reward amount (in wei) configured for this Company
+    /// @dev Delegates to the CompanyRegistry factory — the factory is the
+    ///      source of truth for the per-company reward amount (spec C1.10).
+    ///      Reads factory.companyRewardAmount(address(this)); returns 0 for
+    ///      non-companies, which cannot happen here since the factory
+    ///      (immutable msg.sender) is this Company's deployer.
+    function rewardAmount() external view returns (uint256) {
+        return ICompanyRegistry(factory).companyRewardAmount(address(this));
+    }
+
+    /// @notice Set this Company's per-claim BonusReward amount (admin-only)
     /// @param amount_ The reward amount (in wei, e.g. 100 * 10^18)
-    /// @dev Only callable by DEFAULT_ADMIN_ROLE
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE (the company admin). Forwards
+    ///      to the CompanyRegistry factory, which emits
+    ///      CompanyRewardAmountUpdated (spec C1.10).
     function setRewardAmount(uint256 amount_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        rewardAmount = amount_;
+        ICompanyRegistry(factory).setCompanyRewardAmount(amount_);
     }
 
     // ══════════════════════════════════════════════════════
@@ -186,18 +196,26 @@ contract Company is AccessControl {
 
     /// @notice Grant MINTER_ROLE to an employee of the caller's company
     /// @param _employeeAddress The employee address to grant minter rights to
-    /// @dev Only callable by DEFAULT_ADMIN_ROLE or the company admin of the employee's company.
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE (the company admin).
+    ///      Reverts with EmployeeNotRegistered if the employee is not active
+    ///      (active employees only, spec C1.9).
     function grantMinterRole(address _employeeAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_employees[_employeeAddress].isActive, "The Employee is not active");
+        if (!_employees[_employeeAddress].isActive) {
+            revert EmployeeNotRegistered(_employeeAddress);
+        }
         _grantRole(MINTER_ROLE, _employeeAddress);
         emit MinterRoleGranted(_employeeAddress);
     }
 
     /// @notice Revoke MINTER_ROLE from an employee
     /// @param _employeeAddress The employee address to revoke minter rights from
-    /// @dev Only callable by DEFAULT_ADMIN_ROLE or the company admin of the employee's company.
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE (the company admin).
+    ///      Reverts with EmployeeNotRegistered if the employee is not active
+    ///      (active employees only, spec C1.9).
     function revokeMinterRole(address _employeeAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_employees[_employeeAddress].isActive, "The Employee is not active");
+        if (!_employees[_employeeAddress].isActive) {
+            revert EmployeeNotRegistered(_employeeAddress);
+        }
         _revokeRole(MINTER_ROLE, _employeeAddress);
         emit MinterRoleRevoked(_employeeAddress);
     }
