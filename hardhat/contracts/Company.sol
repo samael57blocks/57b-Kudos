@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 /// @dev Factory pattern: CompanyRegistry (immutable factory) is the sole deployer;
 ///      the NFT57B minting contract is pinned at construction (immutable nft57b);
 ///      the company admin is granted DEFAULT_ADMIN_ROLE in the constructor.
-///      Company implements NO onClaimed — the factory orchestrates claims (2 hops).
+///      Company has no claim orchestration — the factory orchestrates claims (2 hops).
 contract Company is AccessControl {
     /// @notice The name of the company
     string public name;
@@ -63,28 +63,6 @@ contract Company is AccessControl {
 
     /// @notice Emitted when MINTER_ROLE is revoked from an employee
     event MinterRoleRevoked(address indexed employee);
-
-    /// @notice Emitted when a minter mints a Kudos NFT
-    event KudosMinted(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee, address minter);
-
-    /// @notice Revert when caller does not hold MINTER_ROLE
-    error OnlyMinter(address caller);
-
-    /// @notice Revert when minter and employee belong to different companies
-    error NotSameCompany(uint256 minterCompany, uint256 employeeCompany);
-
-    // ══════════════════════════════════════════════════════
-    //  Reward Orchestration Errors
-    // ══════════════════════════════════════════════════════
-
-    /// @notice Revert when caller is not the admin of the employee's company
-    error OnlyCompanyAdmin(address caller, uint256 companyId);
-
-    /// @notice Revert when reward contracts (BonusReward or RecognitionToken) are not set
-    error RewardContractsNotSet();
-
-    /// @notice Revert when onClaimed is called by anyone other than NFT57B
-    error NotNFT57B(address caller);
 
     /// @notice Amount of BonusReward tokens minted per claim
     uint256 public rewardAmount;
@@ -177,16 +155,22 @@ contract Company is AccessControl {
     // ══════════════════════════════════════════════════════
 
     /// @notice Recognize an employee by minting a Kudos NFT
-    /// @param _employeeAddress The employee address (must be registered to a company)
+    /// @param _employeeAddress The employee address (must be an active employee)
     /// @param uri Metadata URI for the Kudos NFT
     /// @return tokenId The ID of the minted token
-    /// @dev Only callable by the admin of the company the employee belongs to.
-    function recognize(address _employeeAddress, string calldata uri) external returns (uint256 tokenId) {
-        require(_employees[_employeeAddress].isActive, "The Employee is not active");
+    /// @dev Only MINTER_ROLE holders (granted by the company admin) can mint.
+    ///      Reverts with EmployeeNotRegistered if the employee is not active.
+    ///      This is the ONLY mint path.
+    function recognize(address _employeeAddress, string calldata uri) external onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+        if (!_employees[_employeeAddress].isActive) {
+            revert EmployeeNotRegistered(_employeeAddress);
+        }
 
         tokenId = nft57b.safeMint(_employeeAddress, uri);
 
         emit Recognized(tokenId, _employeeAddress);
+
+        return tokenId;
     }
 
     /// @notice Set the amount of BonusReward tokens minted per claim
@@ -195,31 +179,6 @@ contract Company is AccessControl {
     function setRewardAmount(uint256 amount_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         rewardAmount = amount_;
     }
-
-    /// @notice Callback invoked by NFT57B after a successful claim
-    /// @param _employeeAddress The address that claimed the token
-    /// @param uri The metadata URI of the claimed token
-    /// @dev Only callable by the stored NFT57B contract. Uses ReentrancyGuard.
-    ///      Mints BonusReward tokens and a RecognitionToken badge.
-    ///      The tokenId parameter is unused (defined by ICompanyRegistry interface).
-    /*function onClaimed(
-        address _employeeAddress,
-        string calldata uri
-    ) external nonReentrant {
-        if (_msgSender() != address(nft57b)) {
-            revert NotNFT57B(_msgSender());
-        }
-
-        if (bonusReward == address(0) || recognitionToken == address(0)) {
-            revert RewardContractsNotSet();
-        }
-
-        // Mint ERC-20 bonus tokens
-        IReward(bonusReward).emitReward(_employeeAddress, rewardAmount, uri);
-
-        // Mint ERC-721 recognition badge (amount=0 as RecognitionToken auto-increments)
-        IReward(recognitionToken).emitReward(_employeeAddress, 0, uri);
-    }*/
 
     // ══════════════════════════════════════════════════════
     //  Minter Role Management
@@ -250,14 +209,4 @@ contract Company is AccessControl {
         return hasRole(MINTER_ROLE, account);
     }
 
-    /// @notice Mint a Kudos NFT to an employee (requires MINTER_ROLE, same company) (duplicated with recognize)
-    /// @param _employeeAddress The employee address to mint to
-    /// @param uri Metadata URI for the Kudos NFT
-    /// @return tokenId The ID of the minted token
-    /*function mintKudos(address _employeeAddress, string calldata uri) external onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
-        require(_employees[_employeeAddress].isActive, "The Employee is not active");
-
-        tokenId = nft57b.safeMint(_employeeAddress, uri);
-        emit KudosMinted(tokenId, employeeCompany, _employeeAddress, msg.sender);
-    }*/
 }
