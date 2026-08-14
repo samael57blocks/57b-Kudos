@@ -105,10 +105,11 @@ contract Company is AccessControl {
 
     /// @notice Register an employee to a company (admin-only)
     /// @param _employeeAddress The employee address to register
-    /// @param companyId The company to assign the employee to
     /// @param _name The employee's display name
     /// @dev Only DEFAULT_ADMIN_ROLE or the company admin can register employees.
-    function registerEmployee(address _employeeAddress, uint256 companyId, string calldata _name) external {
+    ///      The companyId parameter is unused (defined by the legacy scaffold signature;
+    ///      its fate is owned by the registerEmployee rewrite).
+    function registerEmployee(address _employeeAddress, uint256 /* companyId */, string calldata _name) external {
         require(_employees[_employeeAddress].isActive, "The Employee is not active");
         _employees[_employeeAddress] = Employee({
             name: _name,
@@ -125,7 +126,7 @@ contract Company is AccessControl {
         require(_employees[_employeeAddress].isActive, "The Employee is not active");
 
         _employees[_employeeAddress].isActive = false;
-        emit EmployeeRemoved(_employees[_employeeAddress].name);
+        emit EmployeeRemoved(_employeeAddress);
     }
 
     /// @notice Get the display name of an employee
