@@ -45,7 +45,7 @@ contract Company is AccessControl {
     event Recognized(uint256 indexed tokenId, address indexed employee);
 
     /// @notice Revert when an employee is already registered to a company
-    error EmployeeAlreadyRegistered(address employee, uint256 companyId);
+    error EmployeeAlreadyRegistered(address employee);
 
     /// @notice Revert when trying to remove an unregistered employee
     error EmployeeNotRegistered(address employee);
@@ -106,17 +106,19 @@ contract Company is AccessControl {
     /// @notice Register an employee to a company (admin-only)
     /// @param _employeeAddress The employee address to register
     /// @param _name The employee's display name
-    /// @dev Only DEFAULT_ADMIN_ROLE or the company admin can register employees.
-    ///      The companyId parameter is unused (defined by the legacy scaffold signature;
-    ///      its fate is owned by the registerEmployee rewrite).
-    function registerEmployee(address _employeeAddress, uint256 /* companyId */, string calldata _name) external {
-        require(_employees[_employeeAddress].isActive, "The Employee is not active");
+    /// @dev Only DEFAULT_ADMIN_ROLE (the company admin) can register employees.
+    ///      Reverts with EmployeeAlreadyRegistered if the employee is already active.
+    function registerEmployee(address _employeeAddress, string calldata _name) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_employees[_employeeAddress].isActive) {
+            revert EmployeeAlreadyRegistered(_employeeAddress);
+        }
+
         _employees[_employeeAddress] = Employee({
             name: _name,
             isActive: true,
             createdAt: block.timestamp
         });
-        emit EmployeeRegistered(_employeeAddress, name);
+        emit EmployeeRegistered(_employeeAddress, _name);
     }
 
     /// @notice Remove an employee from their company
