@@ -50,9 +50,9 @@ async function expectRevertWithError(
   }
 }
 
-describe("CompanyRegistry", function () {
+describe("CompanyRegistry — factory API", function () {
   async function deployFixture() {
-    const [owner, other, companyAdmin, minterWallet, anotherWallet] =
+    const [owner, other, companyAdmin, employee, anotherWallet] =
       await hre.viem.getWalletClients();
 
     // Deploy NFT57B (owner gets DEFAULT_ADMIN_ROLE)
@@ -60,61 +60,193 @@ describe("CompanyRegistry", function () {
       owner.account.address,
     ]);
 
-    // Deploy CompanyRegistry (owner gets DEFAULT_ADMIN_ROLE)
-    const registry = await hre.viem.deployContract("CompanyRegistry", [
-      nft.address,
+    // Deploy the two reward contracts (owner gets DEFAULT_ADMIN_ROLE)
+    const bonus = await hre.viem.deployContract("BonusReward", [
       owner.account.address,
     ]);
+    const recognition = await hre.viem.deployContract("RecognitionToken", [
+      owner.account.address,
+      "57Blocks Recognition",
+      "57BR",
+    ]);
+
+    // Deploy the factory with the reward addresses pinned as immutables
+    const registry = await hre.viem.deployContract("CompanyRegistry", [
+      nft.address,
+      bonus.address,
+      recognition.address,
+      owner.account.address, // DEFAULT_ADMIN_ROLE on the factory
+    ]);
+
+    // F1.10 wiring: the factory must be DEFAULT_ADMIN on both rewards so
+    // registerCompany can grant MINTER_ROLE to each deployed Company
+    const defaultAdminRole = await bonus.read.DEFAULT_ADMIN_ROLE();
+    await bonus.write.grantRole([defaultAdminRole, registry.address], {
+      account: owner.account,
+    });
+    await recognition.write.grantRole([defaultAdminRole, registry.address], {
+      account: owner.account,
+    });
 
     return {
       nft,
       registry,
+      bonus,
+      recognition,
       owner,
       other,
       companyAdmin,
-      minterWallet,
+      employee,
       anotherWallet,
     };
   }
 
-  describe("R9: registerCompany", function () {
-    it("R9-Happy: should create company with incrementing ID and emit CompanyRegistered", async function () {
-      const { registry, owner, companyAdmin } = await loadFixture(deployFixture);
+  /**
+   * Register a company via the factory admin. Returns the deployed Company
+   * address — registerCompany now returns an address, not a companyId.
+   */
+  async function registerCompany(
+    registry: any,
+    admin: any,
+    name: string,
+    adminWallet: `0x${string}`
+  ): Promise<`0x${string}`> {
+    const { result } = await registry.simulate.registerCompany(
+      [name, adminWallet],
+      { account: admin.account }
+    );
+    await registry.write.registerCompany([name, adminWallet], {
+      account: admin.account,
+    });
+    return result as `0x${string}`;
+  }
 
-      // Register first company
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
+  describe("registerCompany", function () {
+    it("returns the deployed Company address and assigns 1-based ids in registration order", async function () {
+      const { registry, owner, companyAdmin } = await loadFixture(
+        deployFixture
       );
 
-      let company = await registry.read.getCompany([0n]);
-      expect(company.name).to.equal("ACME Corp");
-      expect(getAddress(company.admin)).to.equal(
-        getAddress(companyAdmin.account.address)
+      // First registration → companyId 1 (array index + 1)
+      const company1 = await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
       );
-      expect(company.id).to.equal(0n);
-      expect(Number(company.createdAt)).to.be.gt(0);
+      expect(company1).to.match(/^0x[0-9a-fA-F]{40}$/);
+      expect(
+        getAddress(await registry.read.getCompanyAddress([1n]))
+      ).to.equal(getAddress(company1));
+      expect(await registry.read.companyCount()).to.equal(1n);
 
-      // Register second company with different data — ID should increment
-      await registry.write.registerCompany(
-        ["Tech Inc", companyAdmin.account.address],
-        { account: owner.account }
+      // Second registration → companyId 2; the first entry is unchanged
+      const company2 = await registerCompany(
+        registry,
+        owner,
+        "Tech Inc",
+        companyAdmin.account.address
       );
-
-      // Company 0 still has original data
-      company = await registry.read.getCompany([0n]);
-      expect(company.name).to.equal("ACME Corp");
-
-      // Company 1 has new data
-      const company2 = await registry.read.getCompany([1n]);
-      expect(company2.name).to.equal("Tech Inc");
-      expect(company2.id).to.equal(1n);
+      expect(company2).not.to.equal(company1);
+      expect(await registry.read.companyCount()).to.equal(2n);
+      expect(
+        getAddress(await registry.read.getCompanyAddress([2n]))
+      ).to.equal(getAddress(company2));
+      expect(
+        getAddress(await registry.read.getCompanyAddress([1n]))
+      ).to.equal(getAddress(company1));
     });
 
-    it("R9-Error: should revert when caller is not DEFAULT_ADMIN", async function () {
-      const { registry, other, companyAdmin } = await loadFixture(deployFixture);
+    it("makes the passed adminWallet the Company DEFAULT_ADMIN_ROLE, not msg.sender", async function () {
+      const { registry, owner, companyAdmin } = await loadFixture(
+        deployFixture
+      );
 
-      // Non-admin (other) tries to register
+      const companyAddress = await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+      const company = await hre.viem.getContractAt("Company", companyAddress);
+
+      const adminRole = await company.read.DEFAULT_ADMIN_ROLE();
+      // The passed wallet is the company admin…
+      expect(
+        await company.read.hasRole([adminRole, companyAdmin.account.address])
+      ).to.be.true;
+      // …while the factory admin (msg.sender of registerCompany) is NOT
+      expect(
+        await company.read.hasRole([adminRole, owner.account.address])
+      ).to.be.false;
+    });
+
+    it("emits CompanyRegistered with indexed companyId, companyAddress, adminWallet and name", async function () {
+      const { registry, owner, companyAdmin } = await loadFixture(
+        deployFixture
+      );
+
+      const companyAddress = await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+
+      const publicClient = await hre.viem.getPublicClient();
+      const logs = await publicClient.getLogs({
+        address: registry.address,
+        fromBlock: 0n,
+        event: {
+          type: "event",
+          name: "CompanyRegistered",
+          inputs: [
+            { type: "uint256", name: "companyId", indexed: true },
+            { type: "address", name: "companyAddress", indexed: true },
+            { type: "address", name: "owner", indexed: true },
+            { type: "string", name: "name", indexed: false },
+          ],
+        },
+      });
+
+      expect(logs.length).to.equal(1);
+      expect(logs[0].args.companyId).to.equal(1n);
+      expect(getAddress(logs[0].args.companyAddress)).to.equal(
+        getAddress(companyAddress)
+      );
+      expect(getAddress(logs[0].args.owner)).to.equal(
+        getAddress(companyAdmin.account.address)
+      );
+      expect(logs[0].args.name).to.equal("ACME Corp");
+    });
+
+    it("grants MINTER_ROLE on BonusReward and RecognitionToken to the deployed Company", async function () {
+      const { registry, bonus, recognition, owner, companyAdmin } =
+        await loadFixture(deployFixture);
+
+      const companyAddress = await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+
+      const bonusMinterRole = await bonus.read.MINTER_ROLE();
+      expect(
+        await bonus.read.hasRole([bonusMinterRole, companyAddress])
+      ).to.be.true;
+
+      const recognitionMinterRole = await recognition.read.MINTER_ROLE();
+      expect(
+        await recognition.read.hasRole([recognitionMinterRole, companyAddress])
+      ).to.be.true;
+    });
+
+    it("reverts AccessControlUnauthorizedAccount when the caller is not the factory DEFAULT_ADMIN", async function () {
+      const { registry, other, companyAdmin } = await loadFixture(
+        deployFixture
+      );
+
       await expectRevertWithError(
         () =>
           registry.write.registerCompany(
@@ -125,814 +257,253 @@ describe("CompanyRegistry", function () {
         "AccessControlUnauthorizedAccount"
       );
     });
-  });
 
-  describe("R15: Employee Registration", function () {
-    it("R15-Happy: DEFAULT_ADMIN can register an employee to any company", async function () {
-      const { registry, owner, companyAdmin, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-
-      // owner (DEFAULT_ADMIN) registers anotherWallet as employee of company 0
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
-        account: owner.account,
-      });
-
-      const employeeCompany = await registry.read.getEmployeeCompany([
-        anotherWallet.account.address,
-      ]);
-      expect(employeeCompany).to.equal(0n);
-    });
-
-    it("R15-Happy: company admin can register employee to own company", async function () {
-      const { registry, owner, companyAdmin, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-
-      // companyAdmin registers anotherWallet
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Bob'], {
-        account: companyAdmin.account,
-      });
-
-      expect(await registry.read.getEmployeeCompany([anotherWallet.account.address])).to.equal(0n);
-    });
-
-    it("R15-Happy: multiple employees can be registered to the same company", async function () {
-      const { registry, owner, companyAdmin, minterWallet, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-
-      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
-        account: owner.account,
-      });
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Another'], {
-        account: owner.account,
-      });
-
-      expect(await registry.read.getEmployeeCompany([minterWallet.account.address])).to.equal(0n);
-      expect(await registry.read.getEmployeeCompany([anotherWallet.account.address])).to.equal(0n);
-    });
-
-    it("R15-Error: should revert when company does not exist", async function () {
-      const { registry, owner, anotherWallet } =
-        await loadFixture(deployFixture);
+    it("reverts InvalidAdminWallet when adminWallet is the zero address", async function () {
+      const { registry, owner } = await loadFixture(deployFixture);
 
       await expectRevertWithError(
         () =>
-          registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Ghost'], {
-            account: owner.account,
-          }),
+          registry.write.registerCompany(
+            ["ACME Corp", "0x0000000000000000000000000000000000000000"],
+            { account: owner.account }
+          ),
+        registry.abi,
+        "InvalidAdminWallet"
+      );
+    });
+  });
+
+  describe("isCompany", function () {
+    it("returns true for a registered Company and false for other addresses", async function () {
+      const { registry, owner, other, employee, companyAdmin } =
+        await loadFixture(deployFixture);
+
+      const companyAddress = await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+
+      expect(await registry.read.isCompany([companyAddress])).to.be.true;
+      expect(await registry.read.isCompany([other.account.address])).to.be
+        .false;
+      expect(await registry.read.isCompany([employee.account.address])).to.be
+        .false;
+      expect(
+        await registry.read.isCompany([
+          "0x0000000000000000000000000000000000000000",
+        ])
+      ).to.be.false;
+    });
+  });
+
+  describe("getCompanyAddressByEmployee", function () {
+    async function withEmployeeFixture() {
+      const fixture = await deployFixture();
+      const { registry, owner, companyAdmin, employee } = fixture;
+
+      const companyAddress = await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+      const company = await hre.viem.getContractAt("Company", companyAddress);
+
+      // Company.registerEmployee syncs the factory routing index in the same
+      // tx (CEI — F1.7/C1.7)
+      await company.write.registerEmployee(
+        [employee.account.address, "Alice"],
+        { account: companyAdmin.account }
+      );
+
+      return { ...fixture, company, companyAddress };
+    }
+
+    it("returns the Company address for an employee registered via the Company", async function () {
+      const { registry, employee, companyAddress } = await loadFixture(
+        withEmployeeFixture
+      );
+
+      const mapped = await registry.read.getCompanyAddressByEmployee([
+        employee.account.address,
+      ]);
+      expect(getAddress(mapped)).to.equal(getAddress(companyAddress));
+    });
+
+    it("reverts EmployeeNotRegistered for an unmapped employee", async function () {
+      const { registry, anotherWallet } = await loadFixture(
+        withEmployeeFixture
+      );
+
+      await expectRevertWithError(
+        () =>
+          registry.read.getCompanyAddressByEmployee([
+            anotherWallet.account.address,
+          ]),
+        registry.abi,
+        "EmployeeNotRegistered"
+      );
+    });
+  });
+
+  describe("company queries", function () {
+    it("getCompanyAddress returns the Company address for a valid id", async function () {
+      const { registry, owner, companyAdmin } = await loadFixture(
+        deployFixture
+      );
+
+      const companyAddress = await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+
+      expect(
+        getAddress(await registry.read.getCompanyAddress([1n]))
+      ).to.equal(getAddress(companyAddress));
+    });
+
+    it("getCompanyAddress reverts CompanyNotFound for id 0 and out-of-range ids", async function () {
+      const { registry, owner, companyAdmin } = await loadFixture(
+        deployFixture
+      );
+
+      await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+
+      await expectRevertWithError(
+        () => registry.read.getCompanyAddress([0n]),
+        registry.abi,
+        "CompanyNotFound"
+      );
+      await expectRevertWithError(
+        () => registry.read.getCompanyAddress([2n]), // only 1 registered
         registry.abi,
         "CompanyNotFound"
       );
     });
 
-    it("R15-Error: should revert when employee is already registered", async function () {
-      const { registry, owner, companyAdmin, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
+    it("getCompanies returns all Company addresses in registration order", async function () {
+      const { registry, owner, companyAdmin } = await loadFixture(
+        deployFixture
       );
 
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
-        account: owner.account,
-      });
+      const company1 = await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+      const company2 = await registerCompany(
+        registry,
+        owner,
+        "Tech Inc",
+        companyAdmin.account.address
+      );
+
+      const companies = await registry.read.getCompanies();
+      expect(companies.length).to.equal(2);
+      expect(getAddress(companies[0])).to.equal(getAddress(company1));
+      expect(getAddress(companies[1])).to.equal(getAddress(company2));
+    });
+
+    it("companyCount tracks the number of registered companies", async function () {
+      const { registry, owner, companyAdmin } = await loadFixture(
+        deployFixture
+      );
+
+      expect(await registry.read.companyCount()).to.equal(0n);
+
+      await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+      expect(await registry.read.companyCount()).to.equal(1n);
+
+      await registerCompany(
+        registry,
+        owner,
+        "Tech Inc",
+        companyAdmin.account.address
+      );
+      expect(await registry.read.companyCount()).to.equal(2n);
+    });
+  });
+
+  describe("Company-only gates (NotCompany)", function () {
+    it("reverts NotCompany when a non-Company (even the factory admin) calls recordEmployee", async function () {
+      const { registry, owner, employee } = await loadFixture(deployFixture);
 
       await expectRevertWithError(
         () =>
-          registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
+          registry.write.recordEmployee([employee.account.address], {
             account: owner.account,
           }),
         registry.abi,
-        "EmployeeAlreadyRegistered"
+        "NotCompany"
       );
     });
 
-    it("R15-Error: should revert when unauthorized caller tries to register", async function () {
-      const { registry, owner, companyAdmin, other, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
+    it("reverts NotCompany when a non-Company calls removeEmployeeRecord", async function () {
+      const { registry, owner, employee } = await loadFixture(deployFixture);
 
       await expectRevertWithError(
         () =>
-          registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
-            account: other.account,
-          }),
-        registry.abi,
-        "OnlyCompanyAdminOrAdmin"
-      );
-    });
-
-    it("R15-Error: should revert when company admin from different company tries to register", async function () {
-      const { registry, owner, companyAdmin, other, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      // other is admin of company 1
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-      await registry.write.registerCompany(
-        ["Tech Inc", other.account.address],
-        { account: owner.account }
-      );
-
-      // companyAdmin (admin of company 0) tries to register to company 1
-      await expectRevertWithError(
-        () =>
-          registry.write.registerEmployee([anotherWallet.account.address, 1n, 'Alice'], {
-            account: companyAdmin.account,
-          }),
-        registry.abi,
-        "OnlyCompanyAdminOrAdmin"
-      );
-    });
-
-    it("R15-Error: should revert on address(0)", async function () {
-      const { registry, owner, companyAdmin } =
-        await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-
-      await expectRevertWithError(
-        () =>
-          registry.write.registerEmployee(
-            ["0x0000000000000000000000000000000000000000", 0n, 'Zero'],
-            { account: owner.account }
-          ),
-        registry.abi,
-        "EmployeeAlreadyRegistered"
-      );
-    });
-  });
-
-  describe("Employee Names", function () {
-    async function nameFixture() {
-      const fixture = await deployFixture();
-      const { registry, owner, companyAdmin, other, anotherWallet } = fixture;
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
-        account: owner.account,
-      });
-
-      return fixture;
-    }
-
-    it("getEmployeeName returns stored name after registration", async function () {
-      const { registry, anotherWallet } = await loadFixture(nameFixture);
-
-      const name = await registry.read.getEmployeeName([anotherWallet.account.address]);
-      expect(name).to.equal('Alice');
-    });
-
-    it("EmployeeRegistered event includes name field", async function () {
-      const { registry, owner, anotherWallet } = await loadFixture(nameFixture);
-
-      const publicClient = await hre.viem.getPublicClient();
-      const logs = await publicClient.getLogs({
-        address: registry.address,
-        fromBlock: 0n,
-        event: {
-          type: 'event',
-          name: 'EmployeeRegistered',
-          inputs: [
-            { type: 'uint256', name: 'companyId', indexed: true },
-            { type: 'address', name: 'employee', indexed: true },
-            { type: 'string', name: 'name', indexed: false },
-          ],
-        },
-      });
-
-      expect(logs.length).to.equal(1);
-      expect(logs[0].args.companyId).to.equal(0n);
-      expect(getAddress(logs[0].args.employee)).to.equal(
-        getAddress(anotherWallet.account.address)
-      );
-      expect(logs[0].args.name).to.equal('Alice');
-    });
-
-    it("empty name is stored correctly", async function () {
-      const { registry, owner, other } = await loadFixture(nameFixture);
-
-      await registry.write.registerEmployee([other.account.address, 0n, ''], {
-        account: owner.account,
-      });
-
-      const name = await registry.read.getEmployeeName([other.account.address]);
-      expect(name).to.equal('');
-    });
-
-    it("updateEmployeeName — DEFAULT_ADMIN can update", async function () {
-      const { registry, owner, anotherWallet } = await loadFixture(nameFixture);
-
-      await registry.write.updateEmployeeName([anotherWallet.account.address, 'Alicia'], {
-        account: owner.account,
-      });
-
-      const name = await registry.read.getEmployeeName([anotherWallet.account.address]);
-      expect(name).to.equal('Alicia');
-    });
-
-    it("updateEmployeeName — company admin can update", async function () {
-      const { registry, companyAdmin, anotherWallet } = await loadFixture(nameFixture);
-
-      await registry.write.updateEmployeeName([anotherWallet.account.address, 'Alicia'], {
-        account: companyAdmin.account,
-      });
-
-      const name = await registry.read.getEmployeeName([anotherWallet.account.address]);
-      expect(name).to.equal('Alicia');
-    });
-
-    it("updateEmployeeName — reverts for unregistered employee", async function () {
-      const { registry, owner, other } = await loadFixture(nameFixture);
-
-      await expectRevertWithError(
-        () =>
-          registry.write.updateEmployeeName([other.account.address, 'Ghost'], {
+          registry.write.removeEmployeeRecord([employee.account.address], {
             account: owner.account,
           }),
         registry.abi,
-        "EmployeeNotRegistered"
+        "NotCompany"
       );
     });
 
-    it("updateEmployeeName — reverts for unauthorized caller", async function () {
-      const { registry, other, anotherWallet } = await loadFixture(nameFixture);
+    it("reverts NotCompany when a non-Company calls setCompanyRewardAmount", async function () {
+      const { registry, owner } = await loadFixture(deployFixture);
 
       await expectRevertWithError(
-        () =>
-          registry.write.updateEmployeeName([anotherWallet.account.address, 'Hacker'], {
-            account: other.account,
-          }),
+        () => registry.write.setCompanyRewardAmount([1000n], {
+          account: owner.account,
+        }),
         registry.abi,
-        "OnlyCompanyAdminOrAdmin"
+        "NotCompany"
       );
     });
 
-    it("removeEmployee clears employee name", async function () {
-      const { registry, owner, anotherWallet } = await loadFixture(nameFixture);
-
-      // Name is set
-      let name = await registry.read.getEmployeeName([anotherWallet.account.address]);
-      expect(name).to.equal('Alice');
-
-      // Remove employee
-      await registry.write.removeEmployee([anotherWallet.account.address], {
-        account: owner.account,
-      });
-
-      // Name should be cleared
-      name = await registry.read.getEmployeeName([anotherWallet.account.address]);
-      expect(name).to.equal('');
-    });
-  });
-
-  describe("R16: Employee Removal", function () {
-    it("R16-Happy: DEFAULT_ADMIN can remove an employee", async function () {
-      const { registry, owner, companyAdmin, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
+    it("a deployed Company can set its reward amount via the Company admin delegate", async function () {
+      const { registry, owner, companyAdmin } = await loadFixture(
+        deployFixture
       );
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
+
+      const companyAddress = await registerCompany(
+        registry,
+        owner,
+        "ACME Corp",
+        companyAdmin.account.address
+      );
+      const company = await hre.viem.getContractAt("Company", companyAddress);
+
+      // Bootstrapped from the platform seed knob at registration (0 by default)
+      expect(
+        await registry.read.companyRewardAmount([companyAddress])
+      ).to.equal(0n);
+
+      // Company admin sets 1000 via the Company delegate → factory mapping
+      await company.write.setRewardAmount([1000n], {
         account: companyAdmin.account,
       });
-
-      // Admin removes employee
-      await registry.write.removeEmployee([anotherWallet.account.address], {
-        account: owner.account,
-      });
-
-      // Employee should be unregistered (returns 0)
-      expect(await registry.read.getEmployeeCompany([anotherWallet.account.address])).to.equal(0n);
-    });
-
-    it("R16-Happy: company admin can remove an employee", async function () {
-      const { registry, owner, companyAdmin, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Bob'], {
-        account: companyAdmin.account,
-      });
-
-      // Company admin removes employee
-      await registry.write.removeEmployee([anotherWallet.account.address], {
-        account: companyAdmin.account,
-      });
-
-      expect(await registry.read.getEmployeeCompany([anotherWallet.account.address])).to.equal(0n);
-    });
-
-    it("R16-Error: should revert when non-admin/non-company-admin tries to remove", async function () {
-      const { registry, owner, companyAdmin, other, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
-        account: companyAdmin.account,
-      });
-
-      // Random wallet (other) tries to remove
-      await expectRevertWithError(
-        () =>
-          registry.write.removeEmployee([anotherWallet.account.address], {
-            account: other.account,
-          }),
-        registry.abi,
-        "OnlyCompanyAdminOrAdmin"
-      );
-    });
-
-    it("R16-Error: should revert when removing non-existent employee", async function () {
-      const { registry, owner, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      await expectRevertWithError(
-        () =>
-          registry.write.removeEmployee([anotherWallet.account.address], {
-            account: owner.account,
-          }),
-        registry.abi,
-        "EmployeeNotRegistered"
-      );
-    });
-
-    it("R16-Error: should revert when company admin from a different company tries to remove", async function () {
-      const { registry, owner, companyAdmin, other, anotherWallet } =
-        await loadFixture(deployFixture);
-
-      // other is NOT admin of company 0 — only companyAdmin is
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Alice'], {
-        account: companyAdmin.account,
-      });
-
-      // other (not admin of company 0, not DEFAULT_ADMIN) tries to remove
-      await expectRevertWithError(
-        () =>
-          registry.write.removeEmployee([anotherWallet.account.address], {
-            account: other.account,
-          }),
-        registry.abi,
-        "OnlyCompanyAdminOrAdmin"
-      );
-    });
-  });
-
-  describe("R14: Company queries", function () {
-    it("R14-Happy: getCompany should return full struct with id, name, admin, and createdAt", async function () {
-      const { registry, owner, companyAdmin } = await loadFixture(deployFixture);
-
-      await registry.write.registerCompany(
-        ["Kudos Foundation", companyAdmin.account.address],
-        { account: owner.account }
-      );
-
-      const company = await registry.read.getCompany([0n]);
-      expect(company.id).to.equal(0n);
-      expect(company.name).to.equal("Kudos Foundation");
-      expect(getAddress(company.admin)).to.equal(
-        getAddress(companyAdmin.account.address)
-      );
-      expect(Number(company.createdAt)).to.be.gt(0);
-    });
-  });
-
-  // ══════════════════════════════════════════════════════
-  //  MINTER_ROLE — grantMinterRole
-  // ══════════════════════════════════════════════════════
-
-  describe("MINTER_ROLE — grantMinterRole", function () {
-    async function minterFixture() {
-      const fixture = await deployFixture();
-      const { registry, owner, companyAdmin, minterWallet } = fixture;
-
-      // Register company and employees
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
-        account: companyAdmin.account,
-      });
-
-      return fixture;
-    }
-
-    it("grant-Happy: DEFAULT_ADMIN can grant MINTER_ROLE", async function () {
-      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
-
-      await registry.write.grantMinterRole([minterWallet.account.address], {
-        account: owner.account,
-      });
-
-      const hasRole = await registry.read.hasRole([
-        (await registry.read.MINTER_ROLE()),
-        minterWallet.account.address,
-      ]);
-      expect(hasRole).to.be.true;
-    });
-
-    it("grant-Happy: company admin can grant MINTER_ROLE to their employee", async function () {
-      const { registry, companyAdmin, minterWallet } = await loadFixture(minterFixture);
-
-      await registry.write.grantMinterRole([minterWallet.account.address], {
-        account: companyAdmin.account,
-      });
-
-      const hasRole = await registry.read.hasRole([
-        (await registry.read.MINTER_ROLE()),
-        minterWallet.account.address,
-      ]);
-      expect(hasRole).to.be.true;
-    });
-
-    it("grant-Happy: emits MinterRoleGranted event", async function () {
-      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
-
-      const txHash = await registry.write.grantMinterRole([minterWallet.account.address], {
-        account: owner.account,
-      });
-
-      const publicClient = await hre.viem.getPublicClient();
-      const logs = await publicClient.getLogs({
-        address: registry.address,
-        fromBlock: 0n,
-        event: {
-          type: 'event',
-          name: 'MinterRoleGranted',
-          inputs: [
-            { type: 'uint256', name: 'companyId', indexed: true },
-            { type: 'address', name: 'employee', indexed: true },
-          ],
-        },
-      });
-
-      expect(logs.length).to.equal(1);
-      expect(logs[0].args.companyId).to.equal(0n);
-      expect(getAddress(logs[0].args.employee)).to.equal(
-        getAddress(minterWallet.account.address)
-      );
-    });
-
-    it("grant-Error: non-admin/non-company-admin reverts", async function () {
-      const { registry, other, minterWallet } = await loadFixture(minterFixture);
-
-      await expectRevertWithError(
-        () =>
-          registry.write.grantMinterRole([minterWallet.account.address], {
-            account: other.account,
-          }),
-        registry.abi,
-        "OnlyCompanyAdminOrAdmin"
-      );
-    });
-
-    it("grant-Error: reverts for unregistered employee", async function () {
-      const { registry, owner, other } = await loadFixture(minterFixture);
-
-      await expectRevertWithError(
-        () =>
-          registry.write.grantMinterRole([other.account.address], {
-            account: owner.account,
-          }),
-        registry.abi,
-        "EmployeeNotRegistered"
-      );
-    });
-  });
-
-  // ══════════════════════════════════════════════════════
-  //  MINTER_ROLE — revokeMinterRole
-  // ══════════════════════════════════════════════════════
-
-  describe("MINTER_ROLE — revokeMinterRole", function () {
-    async function minterFixture() {
-      const fixture = await deployFixture();
-      const { registry, owner, companyAdmin, minterWallet } = fixture;
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
-        account: companyAdmin.account,
-      });
-
-      // Grant first
-      await registry.write.grantMinterRole([minterWallet.account.address], {
-        account: owner.account,
-      });
-
-      return fixture;
-    }
-
-    it("revoke-Happy: DEFAULT_ADMIN can revoke MINTER_ROLE", async function () {
-      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
-
-      await registry.write.revokeMinterRole([minterWallet.account.address], {
-        account: owner.account,
-      });
-
-      const hasRole = await registry.read.hasRole([
-        (await registry.read.MINTER_ROLE()),
-        minterWallet.account.address,
-      ]);
-      expect(hasRole).to.be.false;
-    });
-
-    it("revoke-Happy: company admin can revoke MINTER_ROLE from their employee", async function () {
-      const { registry, companyAdmin, minterWallet } = await loadFixture(minterFixture);
-
-      await registry.write.revokeMinterRole([minterWallet.account.address], {
-        account: companyAdmin.account,
-      });
-
-      const hasRole = await registry.read.hasRole([
-        (await registry.read.MINTER_ROLE()),
-        minterWallet.account.address,
-      ]);
-      expect(hasRole).to.be.false;
-    });
-
-    it("revoke-Happy: emits MinterRoleRevoked event", async function () {
-      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
-
-      const txHash = await registry.write.revokeMinterRole([minterWallet.account.address], {
-        account: owner.account,
-      });
-
-      const publicClient = await hre.viem.getPublicClient();
-      const logs = await publicClient.getLogs({
-        address: registry.address,
-        fromBlock: 0n,
-        event: {
-          type: 'event',
-          name: 'MinterRoleRevoked',
-          inputs: [
-            { type: 'uint256', name: 'companyId', indexed: true },
-            { type: 'address', name: 'employee', indexed: true },
-          ],
-        },
-      });
-
-      expect(logs.length).to.equal(1);
-      expect(logs[0].args.companyId).to.equal(0n);
-      expect(getAddress(logs[0].args.employee)).to.equal(
-        getAddress(minterWallet.account.address)
-      );
-    });
-
-    it("revoke-Error: non-admin/non-company-admin reverts", async function () {
-      const { registry, other, minterWallet } = await loadFixture(minterFixture);
-
-      await expectRevertWithError(
-        () =>
-          registry.write.revokeMinterRole([minterWallet.account.address], {
-            account: other.account,
-          }),
-        registry.abi,
-        "OnlyCompanyAdminOrAdmin"
-      );
-    });
-
-    it("revoke-Error: reverts for unregistered employee", async function () {
-      const { registry, owner, other } = await loadFixture(minterFixture);
-
-      await expectRevertWithError(
-        () =>
-          registry.write.revokeMinterRole([other.account.address], {
-            account: owner.account,
-          }),
-        registry.abi,
-        "EmployeeNotRegistered"
-      );
-    });
-  });
-
-  // ══════════════════════════════════════════════════════
-  //  hasMinterRole
-  // ══════════════════════════════════════════════════════
-
-  describe("hasMinterRole", function () {
-    async function minterFixture() {
-      const fixture = await deployFixture();
-      const { registry, owner, companyAdmin, minterWallet } = fixture;
-
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
-        account: companyAdmin.account,
-      });
-
-      return fixture;
-    }
-
-    it("hasMinterRole-Happy: returns true when MINTER_ROLE is granted", async function () {
-      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
-
-      await registry.write.grantMinterRole([minterWallet.account.address], {
-        account: owner.account,
-      });
-
-      const result = await registry.read.hasMinterRole([minterWallet.account.address]);
-      expect(result).to.be.true;
-    });
-
-    it("hasMinterRole-Happy: returns false when MINTER_ROLE is not granted", async function () {
-      const { registry, minterWallet } = await loadFixture(minterFixture);
-
-      const result = await registry.read.hasMinterRole([minterWallet.account.address]);
-      expect(result).to.be.false;
-    });
-
-    it("hasMinterRole-Happy: returns false after MINTER_ROLE is revoked", async function () {
-      const { registry, owner, minterWallet } = await loadFixture(minterFixture);
-
-      await registry.write.grantMinterRole([minterWallet.account.address], {
-        account: owner.account,
-      });
-      expect(await registry.read.hasMinterRole([minterWallet.account.address])).to.be.true;
-
-      await registry.write.revokeMinterRole([minterWallet.account.address], {
-        account: owner.account,
-      });
-      expect(await registry.read.hasMinterRole([minterWallet.account.address])).to.be.false;
-    });
-  });
-
-  // ══════════════════════════════════════════════════════
-  //  mintKudos
-  // ══════════════════════════════════════════════════════
-
-  describe("mintKudos", function () {
-    async function mintFixture() {
-      const fixture = await deployFixture();
-      const { nft, registry, owner, companyAdmin, minterWallet, anotherWallet } = fixture;
-
-      // Register company
-      await registry.write.registerCompany(
-        ["ACME Corp", companyAdmin.account.address],
-        { account: owner.account }
-      );
-
-      // Register two employees via admin
-      await registry.write.registerEmployee([minterWallet.account.address, 0n, 'Minter'], {
-        account: companyAdmin.account,
-      });
-      await registry.write.registerEmployee([anotherWallet.account.address, 0n, 'Another'], {
-        account: companyAdmin.account,
-      });
-
-      // Grant minter role
-      await registry.write.grantMinterRole([minterWallet.account.address], {
-        account: companyAdmin.account,
-      });
-
-      // Set CompanyRegistry on NFT57B so safeMint works
-      await nft.write.setCompanyRegistry([registry.address], {
-        account: owner.account,
-      });
-
-      return fixture;
-    }
-
-    it("mint-Happy: minter can mint Kudos to same-company employee", async function () {
-      const { registry, nft, minterWallet, anotherWallet } = await loadFixture(mintFixture);
-
-      await registry.write.mintKudos(
-        [anotherWallet.account.address, "ipfs://token-uri-1"],
-        { account: minterWallet.account }
-      );
-
-      // Verify NFT was minted — token ID 0
-      const tokenOwner = await nft.read.ownerOf([0n]);
-      expect(getAddress(tokenOwner)).to.equal(getAddress(anotherWallet.account.address));
-    });
-
-    it("mint-Happy: emits KudosMinted event with correct args", async function () {
-      const { registry, minterWallet, anotherWallet } = await loadFixture(mintFixture);
-
-      const txHash = await registry.write.mintKudos(
-        [anotherWallet.account.address, "ipfs://token-uri-2"],
-        { account: minterWallet.account }
-      );
-
-      const publicClient = await hre.viem.getPublicClient();
-      const logs = await publicClient.getLogs({
-        address: registry.address,
-        fromBlock: 0n,
-        event: {
-          type: 'event',
-          name: 'KudosMinted',
-          inputs: [
-            { type: 'uint256', name: 'tokenId', indexed: true },
-            { type: 'uint256', name: 'companyId', indexed: true },
-            { type: 'address', name: 'employee', indexed: true },
-            { type: 'address', name: 'minter', indexed: false },
-          ],
-        },
-      });
-
-      expect(logs.length).to.equal(1);
-      expect(logs[0].args.tokenId).to.equal(0n);
-      expect(logs[0].args.companyId).to.equal(0n);
-      expect(getAddress(logs[0].args.employee)).to.equal(
-        getAddress(anotherWallet.account.address)
-      );
-    });
-
-    it("mint-Error: non-minter reverts with AccessControl", async function () {
-      const { registry, anotherWallet } = await loadFixture(mintFixture);
-
-      await expectRevertWithError(
-        () =>
-          registry.write.mintKudos(
-            [anotherWallet.account.address, "ipfs://token-uri"],
-            { account: anotherWallet.account }
-          ),
-        registry.abi,
-        "AccessControlUnauthorizedAccount"
-      );
-    });
-
-    it("mint-Error: reverts when employee is not registered", async function () {
-      const { registry, owner, minterWallet, other } = await loadFixture(mintFixture);
-
-      await expectRevertWithError(
-        () =>
-          registry.write.mintKudos(
-            [other.account.address, "ipfs://token-uri"],
-            { account: minterWallet.account }
-          ),
-        registry.abi,
-        "EmployeeNotRegistered"
-      );
-    });
-
-    it("mint-Error: reverts when minter and employee are in different companies", async function () {
-      const { registry, owner, minterWallet, other } = await loadFixture(mintFixture);
-
-      // Register second company with 'other' as admin and employee
-      await registry.write.registerCompany(
-        ["Tech Inc", other.account.address],
-        { account: owner.account }
-      );
-      await registry.write.registerEmployee([other.account.address, 1n, 'TechGuy'], {
-        account: owner.account,
-      });
-
-      // minterWallet is in company 0, other is in company 1
-      await expectRevertWithError(
-        () =>
-          registry.write.mintKudos(
-            [other.account.address, "ipfs://token-uri"],
-            { account: minterWallet.account }
-          ),
-        registry.abi,
-        "NotSameCompany"
-      );
+      expect(
+        await registry.read.companyRewardAmount([companyAddress])
+      ).to.equal(1000n);
+      expect(await company.read.rewardAmount()).to.equal(1000n);
     });
   });
 });
