@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "./ICompanyRegistry.sol";
+import "./interfaces/ICompanyRegistry.sol";
 
 /// @notice Emitted when a non-admin tries to transfer an NFT57B token between non-zero addresses
 error TransferNotAllowed(uint256 tokenId, address from, address to);
@@ -13,21 +13,21 @@ error TransferNotAllowed(uint256 tokenId, address from, address to);
 /// @notice Emitted when a non-owner tries to claim a token
 error ClaimNotAllowed(uint256 tokenId, address caller);
 
-/// @notice Emitted when companyRegistry is not set before claim
-error CompanyRegistryNotSet();
+/// @notice Emitted when the factory is not set before a mint or claim
+error FactoryNotSet();
 
-/// @notice Emitted when a non-CompanyRegistry caller tries to mint
-error OnlyCompanyRegistry(address caller);
+/// @notice Emitted when a caller that is not a factory-registered Company tries to mint
+error OnlyCompany(address caller);
 
 /// @title NFT57B — 57Blocks Kudos Non-Transferable NFT
-/// @notice Core ERC-721 token with non-transferable policy, CompanyRegistry-only minting, and pausable mint
+/// @notice Core ERC-721 token with non-transferable policy, factory-authorized minting, and pausable mint
 /// @dev Combines ERC721URIStorage, ERC721Enumerable, AccessControl (DEFAULT_ADMIN only), and Pausable.
-///      Only CompanyRegistry can mint via safeMint. Admin controls pause/burn/setCompanyRegistry.
+///      Only factory-registered Companies can mint via safeMint. Admin controls pause/burn/setFactory.
 contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
     uint256 private _nextTokenId;
 
-    /// @notice Address of the CompanyRegistry contract for minting and reward orchestration
-    address public companyRegistry;
+    /// @notice Address of the factory (CompanyRegistry) contract for mint authorization and claim routing
+    address public factory;
 
     /// @notice Emitted when a new NFT is minted
     /// @param tokenId The ID of the minted token
@@ -46,15 +46,9 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
     /// @param employee The address that claimed the token
     event ClaimInitiated(uint256 indexed tokenId, address indexed employee);
 
-    /// @notice Emitted when the CompanyRegistry address is updated
-    /// @param registry The new CompanyRegistry address
-    event CompanyRegistryUpdated(address indexed registry);
-
-    /// @notice Restrict function to the CompanyRegistry contract
-    modifier onlyCompanyRegistry() {
-        if (_msgSender() != companyRegistry) revert OnlyCompanyRegistry(_msgSender());
-        _;
-    }
+    /// @notice Emitted when the factory address is updated
+    /// @param factory The new factory address
+    event FactoryUpdated(address indexed factory);
 
     /// @notice Initializes the NFT57B contract
     /// @param defaultAdmin Address that receives DEFAULT_ADMIN_ROLE
@@ -66,8 +60,12 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
     /// @param to Recipient address
     /// @param uri Token metadata URI
     /// @return tokenId The ID of the newly minted token
-    /// @dev Only callable by CompanyRegistry. Reverts when paused.
-    function safeMint(address to, string calldata uri) external onlyCompanyRegistry whenNotPaused returns (uint256) {
+    /// @dev Only callable by factory-registered Companies. Reverts FactoryNotSet when the factory is
+    ///      unset and OnlyCompany when the caller is not a registered Company. Reverts when paused.
+    function safeMint(address to, string calldata uri) external whenNotPaused returns (uint256) {
+        if (factory == address(0)) revert FactoryNotSet();
+        if (!ICompanyRegistry(factory).isCompany(_msgSender())) revert OnlyCompany(_msgSender());
+
         uint256 tokenId = _nextTokenId;
         unchecked {
             _nextTokenId++;
@@ -101,27 +99,27 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
         _unpause();
     }
 
-    /// @notice Set the CompanyRegistry contract address for reward orchestration
-    /// @param registry_ The CompanyRegistry contract address
-    /// @dev Only callable by DEFAULT_ADMIN_ROLE. Emits CompanyRegistryUpdated.
-    function setCompanyRegistry(address registry_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        companyRegistry = registry_;
-        emit CompanyRegistryUpdated(registry_);
+    /// @notice Set the factory contract address for mint authorization and claim routing
+    /// @param factory_ The factory (CompanyRegistry) contract address
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE. Emits FactoryUpdated.
+    function setFactory(address factory_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        factory = factory_;
+        emit FactoryUpdated(factory_);
     }
 
     /// @notice Claim a token by burning it and triggering reward distribution
     /// @param tokenId The ID of the token to claim
     /// @dev CEI pattern: burn first, then external callback.
     ///      Only the token owner can claim. Contract must NOT be paused.
-    ///      CompanyRegistry must be set before calling.
+    ///      Factory must be set before calling.
     function claim(uint256 tokenId) external whenNotPaused {
         if (_ownerOf(tokenId) != _msgSender()) {
             revert ClaimNotAllowed(tokenId, _msgSender());
         }
 
-        address registry = companyRegistry;
-        if (registry == address(0)) {
-            revert CompanyRegistryNotSet();
+        address factory_ = factory;
+        if (factory_ == address(0)) {
+            revert FactoryNotSet();
         }
 
         // Capture URI BEFORE burn — OZ v5 _burn clears URI storage
@@ -133,7 +131,7 @@ contract NFT57B is ERC721URIStorage, ERC721Enumerable, AccessControl, Pausable {
         emit ClaimInitiated(tokenId, _msgSender());
 
         // CEI: external callback after state change
-        ICompanyRegistry(registry).onClaimed(_msgSender(), tokenId, uri);
+        ICompanyRegistry(factory_).onClaimed(_msgSender(), tokenId, uri);
     }
 
     // ══════════════════════════════════════════════════════
