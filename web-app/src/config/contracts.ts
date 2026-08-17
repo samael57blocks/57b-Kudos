@@ -44,6 +44,8 @@ export function getContractAddresses(): ContractAddresses | null {
 
 // ── ABIs (minimal — only the functions/events we need) ─────────────────────────
 
+// ── NFT57B (ERC-721 + claim + factory) ───────────────────────────────────────
+
 export const NFT57B_ABI = parseAbi([
   // Read
   'function balanceOf(address owner) external view returns (uint256)',
@@ -54,39 +56,74 @@ export const NFT57B_ABI = parseAbi([
   // Write
   'function burn(uint256 tokenId) external',
   'function claim(uint256 tokenId) external',
+  'function safeMint(address to, string uri) external',
+  // Factory
+  'function factory() external view returns (address)',
+  'function setFactory(address newFactory) external',
   // AccessControl
   'function hasRole(bytes32 role, address account) external view returns (bool)',
   'function DEFAULT_ADMIN_ROLE() external pure returns (bytes32)',
   // Events
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
   'event ClaimInitiated(address indexed employee, uint256 indexed tokenId, string uri)',
+  'event FactoryUpdated(address indexed factory)',
 ])
+
+// ── Company Registry (factory) ───────────────────────────────────────────────
 
 export const COMPANY_REGISTRY_ABI = parseAbi([
   // Read
-  'function getCompany(uint256 companyId) external view returns ((uint256 id, string name, address admin, uint256 createdAt))',
-  'function getEmployeeCompany(address employee) external view returns (uint256 companyId)',
-  'function isEmployee(address employee) external view returns (bool)',
+  'function isCompany(address addr) external view returns (bool)',
+  'function getCompanyAddressByEmployee(address employee) external view returns (address)',
+  'function getCompanyAddress(uint256 companyId) external view returns (address)',
+  'function getCompanies() external view returns (address[])',
+  'function companyCount() external view returns (uint256)',
+  'function companyRewardAmount(address company) external view returns (uint256)',
+  'function bonusReward() external view returns (address)',
+  'function recognitionToken() external view returns (address)',
   'function nft57b() external view returns (address)',
   // Write
-  'function registerCompany(string calldata name, address adminWallet) external returns (uint256 companyId)',
+  'function registerCompany(string calldata name, address adminWallet) external returns (address)',
+  'function recordEmployee(address employee) external',
+  'function removeEmployeeRecord(address employee) external',
+  'function setCompanyRewardAmount(uint256 amount) external',
+  // AccessControl
+  'function hasRole(bytes32 role, address account) external view returns (bool)',
+  'function DEFAULT_ADMIN_ROLE() external pure returns (bytes32)',
+  // Events
+  'event CompanyRegistered(uint256 indexed companyId, address indexed companyAddress, address indexed owner, string name)',
+  'event CompanyRewardAmountUpdated(address indexed company, uint256 amount)',
+])
+
+// ── Company (ICompany — each deployed company contract) ──────────────────────
+
+export const COMPANY_ABI = parseAbi([
+  // Read
+  'function name() external view returns (string)',
+  'function isEmployee(address employee) external view returns (bool)',
   'function getEmployeeName(address employee) external view returns (string)',
-  'function registerEmployee(address employee, uint256 companyId, string calldata name) external',
+  'function hasMinterRole(address account) external view returns (bool)',
+  'function rewardAmount() external view returns (uint256)',
+  'function factory() external view returns (address)',
+  'function nft57b() external view returns (address)',
+  // Write
+  'function registerEmployee(address employee, string calldata name) external',
+  'function removeEmployee(address employee) external',
   'function updateEmployeeName(address employee, string calldata name) external',
   'function recognize(address employee, string calldata uri) external returns (uint256 tokenId)',
+  'function grantMinterRole(address employee) external',
+  'function revokeMinterRole(address employee) external',
+  'function setRewardAmount(uint256 amount) external',
   // AccessControl
-  'function MINTER_ROLE() external pure returns (bytes32)',
-  'function grantMinterRole(address account) external',
-  'function revokeMinterRole(address account) external',
-  'function mintKudos(address to, string calldata uri) external returns (uint256)',
   'function hasRole(bytes32 role, address account) external view returns (bool)',
+  'function DEFAULT_ADMIN_ROLE() external pure returns (bytes32)',
+  'function MINTER_ROLE() external pure returns (bytes32)',
   // Events
-  'event CompanyRegistered(uint256 indexed companyId, string name, address indexed admin)',
-  'event EmployeeRegistered(uint256 indexed companyId, address indexed employee, string name)',
-  'event Recognized(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee)',
-  'event MinterRoleGranted(uint256 indexed companyId, address indexed employee)',
-  'event MinterRoleRevoked(uint256 indexed companyId, address indexed employee)',
-  'event KudosMinted(uint256 indexed tokenId, uint256 indexed companyId, address indexed employee, address minter)',
+  'event EmployeeRegistered(address indexed employee, string name)',
+  'event EmployeeRemoved(address indexed employee)',
+  'event Recognized(uint256 indexed tokenId, address indexed employee)',
+  'event MinterRoleGranted(address indexed employee)',
+  'event MinterRoleRevoked(address indexed employee)',
 ])
 
 export const RECOGNITION_TOKEN_ABI = parseAbi([
