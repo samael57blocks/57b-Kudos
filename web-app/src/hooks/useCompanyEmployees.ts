@@ -2,6 +2,7 @@ import { usePublicClient } from 'wagmi'
 import { useCallback, useEffect, useState } from 'react'
 import { parseAbiItem } from 'viem'
 import { getContractAddresses } from '../config/contracts'
+import { resolveCompanyById } from '../config/contract-aliases'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,14 +20,19 @@ export interface UseCompanyEmployeesResult {
   refresh: () => void
 }
 
+/** Event signature on Company contract (no companyId — implicit from contract address) */
+const EMPLOYEE_REGISTERED_EVENT = parseAbiItem(
+  'event EmployeeRegistered(address indexed employee, string name)',
+)
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
- * Fetch all employees registered to a company by scanning
- * `EmployeeRegistered` events from the CompanyRegistry.
+ * Fetch all employees registered to a company by:
+ * 1. Resolving companyId → Company address via factory alias
+ * 2. Scanning `EmployeeRegistered` events from the Company contract
  *
- * Returns EmployeeData items with empty date placeholder (block
- * timestamp resolution deferred to follow-up work).
+ * Returns EmployeeData items with resolved registration dates from block timestamps.
  */
 export function useCompanyEmployees(
   companyId: bigint | null,
@@ -64,12 +70,20 @@ export function useCompanyEmployees(
       setError(null)
 
       try {
+        // 1. Resolve companyId to Company contract address
+        const resolved = await resolveCompanyById(publicClient, companyId)
+
+        if (cancelled) return
+
+        if (!resolved) {
+          setEmployees([])
+          return
+        }
+
+        // 2. Scan EmployeeRegistered events from the Company contract
         const logs = await publicClient.getLogs({
-          address: contracts.companyRegistry,
-          event: parseAbiItem(
-            'event EmployeeRegistered(uint256 indexed companyId, address indexed employee, string name)',
-          ),
-          args: { companyId },
+          address: resolved.address,
+          event: EMPLOYEE_REGISTERED_EVENT,
           fromBlock: 0n,
         })
 
@@ -81,9 +95,7 @@ export function useCompanyEmployees(
           registrationDate: '',
         }))
 
-        if (cancelled) return
-
-        // Resolve block timestamps for registration dates
+        // 3. Resolve block timestamps for registration dates
         const timestampPromises = empData.map((_emp, i) =>
           publicClient
             .getBlock({ blockNumber: logs[i].blockNumber! })
