@@ -1,14 +1,16 @@
 import { usePublicClient } from 'wagmi'
 import { useCallback, useEffect, useState } from 'react'
 import { parseAbiItem } from 'viem'
-import { COMPANY_REGISTRY_ABI, getContractAddresses } from '../config/contracts'
+import { getContractAddresses } from '../config/contracts'
+import type { CompanyAddress } from '../config/contract-aliases'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface CompanyData {
   id: bigint
+  address: CompanyAddress
   name: string
-  admin: `0x${string}`
+  owner: `0x${string}`
   createdAt: bigint
 }
 
@@ -20,11 +22,20 @@ export interface UseCompaniesResult {
   refresh: () => void
 }
 
+/** Event signature for factory-pattern CompanyRegistry */
+const COMPANY_REGISTERED_EVENT = parseAbiItem(
+  'event CompanyRegistered(uint256 indexed companyId, address indexed companyAddress, address indexed owner, string name)',
+)
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
  * Fetch all registered companies by scanning `CompanyRegistered` events
- * from the CompanyRegistry and enriching each with `getCompany()`.
+ * from the CompanyRegistry.
+ *
+ * In the factory pattern, each event provides companyId, companyAddress,
+ * owner, and name directly — no separate read call needed.
+ * Block timestamps are resolved for createdAt.
  */
 export function useCompanies(): UseCompaniesResult {
   const publicClient = usePublicClient()
@@ -60,44 +71,50 @@ export function useCompanies(): UseCompaniesResult {
       setError(null)
 
       try {
-        // 1. Scan CompanyRegistered events
+        // 1. Scan CompanyRegistered events (factory pattern)
         const logs = await publicClient.getLogs({
           address: contracts.companyRegistry,
-          event: parseAbiItem(
-            'event CompanyRegistered(uint256 indexed companyId, string name, address indexed admin)',
-          ),
+          event: COMPANY_REGISTERED_EVENT,
           fromBlock: 0n,
         })
 
         if (cancelled) return
 
         // 2. Deduplicate by companyId
-        const companyIds = [
-          ...new Set(logs.map((log) => log.args.companyId as bigint)),
-        ]
+        const seen = new Set<string>()
+        const uniqueLogs = logs.filter((log) => {
+          const id = log.args.companyId?.toString() ?? ''
+          if (seen.has(id)) return false
+          seen.add(id)
+          return true
+        })
 
-        // 3. Enrich with getCompany for each unique ID
-        const rawData = await Promise.all(
-          companyIds.map((id) =>
-            publicClient.readContract({
-              address: contracts.companyRegistry,
-              abi: COMPANY_REGISTRY_ABI,
-              functionName: 'getCompany',
-              args: [id],
-            }),
-          ),
-        )
-
-        if (cancelled) return
-
-        const enriched: CompanyData[] = rawData.map((data) => ({
-          id: data.id,
-          name: data.name,
-          admin: data.admin as `0x${string}`,
-          createdAt: data.createdAt,
+        // 3. Build CompanyData from event args (no getCompany call needed)
+        const enriched: CompanyData[] = uniqueLogs.map((log) => ({
+          id: log.args.companyId!,
+          address: log.args.companyAddress as CompanyAddress,
+          name: (log.args.name as string) ?? '',
+          owner: log.args.owner as `0x${string}`,
+          createdAt: 0n, // resolved below
         }))
 
-        setCompanies(enriched)
+        // 4. Resolve block timestamps for createdAt
+        const timestampPromises = enriched.map((company, i) =>
+          publicClient
+            .getBlock({ blockNumber: uniqueLogs[i].blockNumber! })
+            .then((block) => {
+              if (cancelled) return
+              company.createdAt = block.timestamp
+            })
+            .catch(() => {
+              if (cancelled) return
+              company.createdAt = 0n
+            }),
+        )
+
+        await Promise.allSettled(timestampPromises)
+
+        if (!cancelled) setCompanies(enriched)
       } catch (err) {
         if (cancelled) return
         setError(

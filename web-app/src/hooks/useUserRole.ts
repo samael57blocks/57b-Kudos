@@ -1,16 +1,18 @@
-import { useReadContract, useAccount } from 'wagmi'
+import { useReadContract, useAccount, usePublicClient } from 'wagmi'
 import { useEffect, useState, useCallback } from 'react'
+import { parseAbiItem } from 'viem'
+import { NFT57B_ABI, getContractAddresses } from '../config/contracts'
 import {
-  NFT57B_ABI,
-  COMPANY_REGISTRY_ABI,
-  getContractAddresses,
-} from '../config/contracts'
+  resolveCompanyByEmployee,
+  hasMinterRoleOn,
+} from '../config/contract-aliases'
+import type { CompanyAddress } from '../config/contract-aliases'
 
 export type UserRole = 'admin' | 'minter' | 'company_admin' | 'employee' | 'visitor'
 
 export interface UserRoleResult {
   role: UserRole
-  /** If the user is an employee, which company they belong to */
+  /** If the user is an employee, which company they belong to (numeric ID) */
   employeeCompanyId: number | undefined
   /** Whether role detection is still loading */
   isLoading: boolean
@@ -25,13 +27,18 @@ export interface UseUserRoleOptions {
   companyAdmin?: boolean
 }
 
+/** Event signature for resolving companyId from company address */
+const COMPANY_REGISTERED_EVENT = parseAbiItem(
+  'event CompanyRegistered(uint256 indexed companyId, address indexed companyAddress, address indexed owner, string name)',
+)
+
 /**
  * Detect the role of the connected wallet by reading from the contracts.
  *
  * - `admin`: has DEFAULT_ADMIN_ROLE on NFT57B (super admin / deployer)
- * - `minter`: has MINTER_ROLE on CompanyRegistry (employee who can mint Kudos)
+ * - `minter`: has MINTER_ROLE on their Company contract (employee who can mint Kudos)
  * - `company_admin`: promoted from `visitor` when `options.companyAdmin` is true
- * - `employee`: registered in CompanyRegistry
+ * - `employee`: registered in a Company contract
  * - `visitor`: connected but no role
  *
  * Priority: admin > minter > company_admin > employee > visitor
@@ -40,16 +47,17 @@ export interface UseUserRoleOptions {
  */
 export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
   const { address } = useAccount()
+  const publicClient = usePublicClient()
   const [role, setRole] = useState<UserRole>('visitor')
   const [employeeCompanyId, setEmployeeCompanyId] = useState<number | undefined>()
   const [error, setError] = useState<string | null>(null)
+  const [empMinterLoading, setEmpMinterLoading] = useState(false)
+  const [refetchKey, setRefetchKey] = useState(0)
 
   const contracts = getContractAddresses()
 
-  // MINTER_ROLE bytes32 constant (keccak256("MINTER_ROLE"))
-  const MINTER_ROLE_BYTES = '0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6' as `0x${string}`
+  // ── 1. Admin check via wagmi hook (unchanged) ──────────────────────────────
 
-  // 1. Check DEFAULT_ADMIN_ROLE
   const { data: defaultAdminRole } = useReadContract({
     address: contracts?.nft57b,
     abi: NFT57B_ABI,
@@ -57,88 +65,119 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
     query: { enabled: !!contracts?.nft57b, staleTime: 30_000 },
   })
 
-  const { data: isAdmin, isFetching: isAdminLoading, refetch: refetchAdmin } = useReadContract({
+  const {
+    data: isAdmin,
+    isFetching: isAdminLoading,
+    refetch: refetchAdmin,
+  } = useReadContract({
     address: contracts?.nft57b,
     abi: NFT57B_ABI,
     functionName: 'hasRole',
     args: defaultAdminRole
       ? [defaultAdminRole, address ?? '0x0']
       : undefined,
-    query: { enabled: !!defaultAdminRole && !!address && !!contracts?.nft57b, staleTime: 30_000 },
+    query: {
+      enabled: !!defaultAdminRole && !!address && !!contracts?.nft57b,
+      staleTime: 30_000,
+    },
   })
 
-  // 2. Check if employee
-  const { data: empCompanyRaw, isFetching: isEmpLoading, refetch: refetchEmployee } = useReadContract({
-    address: contracts?.companyRegistry,
-    abi: COMPANY_REGISTRY_ABI,
-    functionName: 'getEmployeeCompany',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address && !!contracts?.companyRegistry, staleTime: 30_000 },
-  })
-
-  // Separate boolean check — getEmployeeCompany returns 0n for both
-  // "not registered" AND "registered to company 0", so we need an
-  // unambiguous is-this-address-an-employee query.
-  const { data: isEmp, isFetching: isEmpLoading2, refetch: refetchIsEmployee } = useReadContract({
-    address: contracts?.companyRegistry,
-    abi: COMPANY_REGISTRY_ABI,
-    functionName: 'isEmployee',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address && !!contracts?.companyRegistry, staleTime: 30_000 },
-  })
-
-  // 3. Check MINTER_ROLE on CompanyRegistry
-  const { data: isMinter, isFetching: isMinterLoading, refetch: refetchMinter } = useReadContract({
-    address: contracts?.companyRegistry,
-    abi: COMPANY_REGISTRY_ABI,
-    functionName: 'hasRole',
-    args: address ? [MINTER_ROLE_BYTES, address] : undefined,
-    query: { enabled: !!address && !!contracts?.companyRegistry, staleTime: 30_000 },
-  })
+  // ── 2 & 3. Employee + Minter detection via factory aliases ──────────────────
 
   useEffect(() => {
-    if (!address || !contracts) {
+    if (!address || !publicClient || !contracts) {
       setRole('visitor')
       setEmployeeCompanyId(undefined)
-      setError('No contracts configured for this network')
+      setError(!contracts ? 'No contracts configured for this network' : null)
+      setEmpMinterLoading(false)
       return
     }
 
-    if (isAdminLoading || isEmpLoading || isEmpLoading2 || isMinterLoading) return
+    // Wait for admin check to complete before resolving employee/minter
+    if (isAdminLoading) return
 
-    // Priority: admin > minter > employee > visitor
-    if (isAdmin) {
-      setRole('admin')
-      return
+    let cancelled = false
+
+    const resolve = async () => {
+      setEmpMinterLoading(true)
+      setError(null)
+
+      try {
+        // Already admin — no need to check employee/minter
+        if (isAdmin) {
+          if (!cancelled) {
+            setRole('admin')
+            setEmployeeCompanyId(undefined)
+          }
+          return
+        }
+
+        // Resolve company by employee address using factory alias
+        const resolved = await resolveCompanyByEmployee(publicClient, address)
+
+        if (cancelled) return
+
+        if (!resolved) {
+          setRole('visitor')
+          setEmployeeCompanyId(undefined)
+          return
+        }
+
+        // Employee found — resolve companyId from registration event
+        let resolvedCompanyId = 0
+        try {
+          const logs = await publicClient.getLogs({
+            address: contracts.companyRegistry,
+            event: COMPANY_REGISTERED_EVENT,
+            args: { companyAddress: resolved.address },
+            fromBlock: 0n,
+          })
+          if (logs[0]?.args.companyId !== undefined) {
+            resolvedCompanyId = Number(logs[0].args.companyId)
+          }
+        } catch {
+          // companyId resolution failed — continue with 0
+        }
+
+        if (cancelled) return
+
+        // Check minter role on the resolved company contract
+        const isMinter = await hasMinterRoleOn(
+          publicClient,
+          resolved.address as CompanyAddress,
+          address,
+        )
+
+        if (cancelled) return
+
+        if (isMinter) {
+          setRole('minter')
+        } else {
+          setRole('employee')
+        }
+        setEmployeeCompanyId(resolvedCompanyId)
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to resolve role',
+          )
+        }
+      } finally {
+        if (!cancelled) setEmpMinterLoading(false)
+      }
     }
 
-    if (isMinter) {
-      setRole('minter')
-      // Minter is also an employee — get company ID if available
-      const companyId = empCompanyRaw !== undefined ? Number(empCompanyRaw) : 0
-      setEmployeeCompanyId(companyId)
-      return
-    }
+    resolve()
 
-    if (isEmp) {
-      const companyId = empCompanyRaw !== undefined ? Number(empCompanyRaw) : 0
-      setRole('employee')
-      setEmployeeCompanyId(companyId)
-      return
+    return () => {
+      cancelled = true
     }
-
-    // Connected but not admin, not minter, not employee → visitor
-    setRole('visitor')
-    setEmployeeCompanyId(undefined)
-    setError(null)
-  }, [address, contracts, isAdmin, isAdminLoading, empCompanyRaw, isEmpLoading, isEmp, isEmpLoading2, isMinter, isMinterLoading])
+  }, [address, publicClient, contracts, isAdmin, isAdminLoading, refetchKey])
 
   const refetchRole = useCallback(() => {
     refetchAdmin?.()
-    refetchEmployee?.()
-    refetchIsEmployee?.()
-    refetchMinter?.()
-  }, [refetchAdmin, refetchEmployee, refetchIsEmployee, refetchMinter])
+    setRefetchKey((k) => k + 1)
+  }, [refetchAdmin])
 
   // Apply companyAdmin override — promotes visitor → company_admin
   const effectiveRole =
@@ -147,7 +186,7 @@ export function useUserRole(options?: UseUserRoleOptions): UserRoleResult {
   return {
     role: effectiveRole,
     employeeCompanyId,
-    isLoading: isAdminLoading || isEmpLoading || isEmpLoading2 || isMinterLoading,
+    isLoading: isAdminLoading || empMinterLoading,
     error,
     refetchRole,
   }
