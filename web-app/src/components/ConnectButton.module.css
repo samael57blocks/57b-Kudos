@@ -1,0 +1,25 @@
+.button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e5e4e7);
+  background: var(--accent-bg, rgba(170, 59, 255, 0.1));
+  color: var(--accent, #aa3bff);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.connected {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e5e4e7);
+  background: var(--code-bg, #f4f3ec);
+  color: var(--text-h, #08060d);
+  cursor: default;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}

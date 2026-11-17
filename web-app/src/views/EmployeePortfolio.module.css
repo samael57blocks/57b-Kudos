@@ -1,0 +1,101 @@
+.wrapper {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* ── Connect message ───────────────────────────────────────────────────── */
+
+.connectMessage {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text, #6b6375);
+}
+
+.connectHeading {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+  margin-bottom: 8px;
+}
+
+.smallText {
+  font-size: 14px;
+}
+
+/* ── Error state ───────────────────────────────────────────────────────── */
+
+.error {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--error);
+  background: #fef2f2;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+  margin-top: 24px;
+}
+
+.errorTitle {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.errorMessage {
+  font-size: 13px;
+}
+
+/* ── Section titles ────────────────────────────────────────────────────── */
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+  margin-bottom: 16px;
+}
+
+/* ── Shared badge clickable layout ─────────────────────────────────────── */
+
+.badgeClickable {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  padding: 12px;
+  border-radius: 12px;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.badgeClickable:hover {
+  background: rgba(0, 0, 0, 0.03);
+  transform: translateY(-1px);
+}
+
+.badgeClickable:active {
+  transform: translateY(0);
+}
+
+.badgeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.badgeCategoryName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+}
+
+.badgeSubtitle {
+  font-size: 13px;
+  color: var(--text, #6b6375);
+}
+
+/* ── Rewards section ──────────────────────────────────────────────────── */
+
+.rewards {
+  margin-top: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-radius: 12px;
+  border: 1px solid #fde68a;
+}

@@ -13,6 +13,9 @@ coverage.json
 # Compiled output
 dist/
 
+# Ignition deployments (auto-generated, per-developer)
+ignition/deployments/
+
 # Lockfiles from other managers
 package-lock.json
 yarn.lock
